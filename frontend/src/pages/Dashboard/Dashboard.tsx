@@ -1,10 +1,11 @@
 import React from 'react';
 import './Dashboard.css';
+import Transactions from '../Transactions/Transactions.tsx';
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="home-screen">
-      <h1>Welcome to the Home Screen</h1>
+    <div className="dashboard">
+      <Transactions/>
     </div>
   );
 };

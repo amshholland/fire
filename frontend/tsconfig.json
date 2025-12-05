@@ -9,6 +9,8 @@
     // See also https://aka.ms/tsconfig/module
     "module": "NodeNext",
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "forceConsistentCasingInFileNames": true,
     "target": "esnext",
     // For nodejs:
     // "lib": ["esnext"],
@@ -27,8 +29,8 @@
     // Style Options
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
 
