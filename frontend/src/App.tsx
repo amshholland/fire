@@ -1,17 +1,27 @@
-import { GoogleOAuthProvider } from "@react-oauth/google";
-import GoogleAuthComponent from "./components/GoogleAuth/GoogleAuthComponent.tsx";
+import React, { useState } from "react";
+import Dashboard from "./Dashboard/Dashboard.tsx";
+import GoogleAuth from "./components/GoogleAuth/GoogleAuth.tsx";
+import theme from "./theme.ts";
+import { ConfigProvider } from 'antd';
 
-export default function App() {
-  const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+const App: React.FC = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  if (!clientId) {
-    console.error("Google Client ID is missing. Check your .env file.");
-    return null;
-  }
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
 
   return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <GoogleAuthComponent />
-    </GoogleOAuthProvider>
+    <div>
+      {isLoggedIn ? (
+        <ConfigProvider theme={theme}>
+          <Dashboard />
+        </ConfigProvider>
+      ) : (
+        <GoogleAuth onLoginSuccess={handleLoginSuccess} />
+      )}
+    </div>
   );
-}
+};
+
+export default App;
