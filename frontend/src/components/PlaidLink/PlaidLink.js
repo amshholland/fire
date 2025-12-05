@@ -2,7 +2,7 @@ import React from 'react';
 import { PlaidLink } from 'react-plaid-link';
 import axios from 'axios';
 
-const PlaidLinkComponent = () => {
+const PlaidLinkAuth = () => {
   const onSuccess = async (public_token) => {
     try {
       // Exchange public token for access token
@@ -34,4 +34,4 @@ const PlaidLinkComponent = () => {
   );
 };
 
-export default PlaidLinkComponent;
+export default PlaidLinkAuth;
