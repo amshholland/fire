@@ -4,7 +4,7 @@ import type {
   PlaidTransactionsResponse,
 } from './plaidService.models.ts';
 
-const API_BASE_URL = '/api/plaid';
+const API_BASE_URL = 'https://sandbox.plaid.com';
 
 /**
  * Creates a link token for initializing Plaid Link
