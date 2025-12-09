@@ -21,14 +21,14 @@ const App: React.FC = () => {
 
   return (
     <GoogleOAuthProvider clientId={clientId}>
-      {isLoggedIn ? (
-        <ConfigProvider theme={theme}>
-          <Header />
+      <ConfigProvider theme={theme}>
+        <Header />
+        {isLoggedIn ? (
           <Dashboard />
-        </ConfigProvider>
-      ) : (
-        <GoogleAuth onLoginSuccess={handleLoginSuccess} />
-      )}
+        ) : (
+          <GoogleAuth onLoginSuccess={handleLoginSuccess} />
+        )}
+      </ConfigProvider>
     </GoogleOAuthProvider>
   )
 }

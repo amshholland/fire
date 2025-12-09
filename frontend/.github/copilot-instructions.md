@@ -1,4 +1,6 @@
-# Project Coding Standards & Guidelines
+# Copilot Instructions
+
+## Project Coding Standards & Guidelines
 
 A reference document to help Copilot (and humans) write consistent, clean, maintainable code.
 
@@ -46,6 +48,31 @@ A reference document to help Copilot (and humans) write consistent, clean, maint
 ---
 
 ## 🧪 Testing Guidelines
+```bash
+# Run all tests
+npm test
+
+# Test individual packages
+npm run test:frontend  # Jest via react-scripts with coverage
+npm run test:backend   # Jest with supertest
+
+# Frontend watch mode (useful during development)
+npm run test:watch --workspace=frontend
+```
+
+## Testing Conventions
+
+### Backend Tests (packages/backend/__tests__/)
+- Use **supertest** to test Express endpoints without starting server
+- Import `{ app, db }` from `../src/app` 
+- **Always close database** in `afterAll(() => db.close())` to avoid open handles
+- Use `--detectOpenHandles` flag in jest script
+
+### Frontend Tests (packages/frontend/src/__tests__/)
+- Use **msw (Mock Service Worker)** to mock API calls
+- Setup pattern: `setupServer()` → `beforeAll(server.listen)` → `afterAll(server.close)`
+- Wrap initial renders in `act()` when data fetching occurs
+- Test coverage excludes `src/index.js` (see package.json jest config)
 
 - Test critical logic and edge cases.
 - Prefer **unit tests** with mock dependencies.
@@ -117,14 +144,28 @@ A reference document to help Copilot (and humans) write consistent, clean, maint
 ## 🧹 Clean Code Quick Reminders
 
 - Do one thing per function.
+- One level of abstraction per function.
 - Avoid side effects unless intentional.
 - Return early when helpful.
 - Don’t repeat yourself.
-- Comments explain intent, not implementation.
-
----
-
-If Copilot follows everything in here, we’re best friends.
+- Avoid comments.
+- Use intention-revealing names.
+- Use the step-down rule:
+  - Code reads like a top-down narrative. We want every function to be followed by those at the next level of abstraction so we can read the program descending one level of abstraction at a time as we read down the list of functions.
+- Test code should be maintained at the same standards of quality as production code.
+- Structure tests with the BUILD->OPERATE->CHECK pattern
+- Use the Given-When-Then approach:
+  - Given: state before the behavior
+  - When: behavior
+  - Then: expected state after the behavior.
+- Minimize the number of asserts in tests.
+- Minimize the number of asserts per concept and test just one concept per test function.
+- Follow the FIRST Rules for Clean Tests:
+  - Fast – should run quickly
+  - Independent – should not depend on each other
+  - Repeatable – should be repeatable in any environment
+  - Self-Validating – should either pass or fail
+  - Timely – needs to be written just before production code
 
 ## Tech Stack & Implementation Guidelines
 
@@ -161,3 +202,9 @@ If Copilot follows everything in here, we’re best friends.
 - Database options open (Postgres, DynamoDB, etc.).
 - Encrypt data in transit and at rest.
 - Consider tRPC or OpenAPI for strong typing.
+
+### File Organization
+
+- Entry points: `packages/backend/src/index.tsx`, `packages/frontend/src/index.tsx`
+- Testable logic: Exported from `App.tsx`, imported by `index.tsx` and tests
+- Tests: `__tests__/` directories (backend) or `src/__tests__/` (frontend)
