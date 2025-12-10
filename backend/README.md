@@ -1,47 +1,69 @@
-# Backend Setup Instructions
+# Backend - FIRE App
+
+Express.js API server with Plaid integration for bank account data.
 
 ## Prerequisites
-- Node.js 18+ installed
-- Plaid account (sign up at https://dashboard.plaid.com/signup)
 
-## Installation
+- Node.js 18+ installed
+- Plaid account (sign up at <https://dashboard.plaid.com/signup>)
+
+## Quick Start
+
+**Recommended: Run from root directory**
+
+```bash
+cd ..
+npm start
+```
+
+This starts both backend and frontend together.
+
+## Standalone Installation
 
 1. Navigate to the backend directory:
+
 ```bash
 cd backend
 ```
 
-2. Install dependencies:
+1. Install dependencies:
+
 ```bash
 npm install
 ```
 
-3. Configure environment variables:
+1. Configure environment variables:
+
    - Copy `.env.example` to `.env`:
+  
      ```bash
      cp .env.example .env
      ```
+
    - Update `.env` with your Plaid credentials:
-     - Get your `PLAID_CLIENT_ID` and `PLAID_SECRET` from https://dashboard.plaid.com/team/keys
+     - Get your `PLAID_CLIENT_ID` and `PLAID_SECRET` from <https://dashboard.plaid.com/team/keys>
      - Set `PLAID_ENV` to `sandbox` for testing (free, uses test data)
 
 ## Development
 
-Start the development server with hot reload:
+**Run backend only:**
+
 ```bash
 npm run dev
 ```
 
-Server will start on http://localhost:3001
+Server will start on <http://localhost:3001>
 
 ## Production
 
 Build the TypeScript code:
+
 ```bash
 npm run build
 ```
 
 Start the production server:
+
 ```bash
 npm start
 ```
@@ -61,11 +83,12 @@ Health check: `GET /health`
 ## Testing with Plaid Sandbox
 
 In sandbox mode, use these test credentials:
+
 - Username: `user_good`
 - Password: `pass_good`
 - Any institution name (e.g., "Chase")
 
-See more test credentials: https://plaid.com/docs/sandbox/test-credentials/
+See more test credentials: <https://plaid.com/docs/sandbox/test-credentials/>
 
 ## Notes
 
