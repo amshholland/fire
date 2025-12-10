@@ -1,12 +1,29 @@
 import React from 'react';
-import './Header.css';
+import { Button } from 'antd'
+import { LogoutOutlined } from '@ant-design/icons'
+import './Header.css'
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  userInfo?: any
+  onLogout?: () => void
+}
+
+const Header: React.FC<HeaderProps> = () => {
   return (
     <div className="Header">
-      Header
+      <div className="header-title">FIRE App</div>
+      {/* {userInfo && (
+        <div className="header-user">
+          <span>Welcome, {userInfo.name || userInfo.email}</span>
+          {onLogout && (
+            <Button type="text" icon={<LogoutOutlined />} onClick={onLogout}>
+              Logout
+            </Button>
+          )}
+        </div>
+      )} */}
     </div>
-  );
-};
+  )
+}
 
 export default Header;

@@ -18,6 +18,10 @@ function GoogleAuth({ onLoginSuccess }: GoogleAuthProps) {
     ) {
       const userInfo = jwtDecode(credentialResponse.credential)
       console.log('Decoded User Info:', userInfo)
+      
+      // Store user info in localStorage for persistence
+      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+      
       onLoginSuccess(userInfo)
     }
   }
@@ -28,7 +32,6 @@ function GoogleAuth({ onLoginSuccess }: GoogleAuthProps) {
 
   return (
     <div>
-      <h1>Google Login Example</h1>
       <GoogleLogin onSuccess={handleSuccess} onError={handleError} />
     </div>
   )
