@@ -1,13 +1,12 @@
 import React from 'react';
-import './Dashboard.css';
-import Transactions from '../Transactions/Transactions.tsx';
+import './Dashboard.css'
 import PlaidLink from '../../components/PlaidLink/PlaidLink.tsx'
 
 const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <PlaidLink />
-      <Transactions />
+      {/* <Transactions /> */}
     </div>
   )
 };
