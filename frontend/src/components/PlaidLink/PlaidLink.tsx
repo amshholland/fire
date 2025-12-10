@@ -1,108 +1,88 @@
-/**
- * PlaidLink Component
- *
- * React component that initializes Plaid Link and handles bank account connection
- */
+import React, { useEffect, useContext } from 'react'
+import { usePlaidLink } from 'react-plaid-link'
+import Context from '../../context/plaidContext.tsx'
 
-import React, { useEffect, useState, useCallback } from 'react'
-import {
-  usePlaidLink,
-  PlaidLinkOnSuccess,
-  PlaidLinkOptions
-} from 'react-plaid-link'
-import { Button } from 'antd'
-import { BankOutlined } from '@ant-design/icons'
-import {
-  createLinkToken,
-  exchangePublicToken
-} from '../../services/plaidService/index.ts'
+const Link = () => {
+  const { linkToken, isPaymentInitiation, isCraProductsExclusively, dispatch } =
+    useContext(Context)
 
-interface PlaidLinkProps {
-  onSuccess?: (accessToken: string, itemId: string) => void
-  onError?: (error: Error) => void
-  buttonText?: string
-}
-
-const PlaidLink: React.FC<PlaidLinkProps> = ({
-  onSuccess,
-  onError,
-  buttonText = 'Connect Bank Account'
-}) => {
-  const [linkToken, setLinkToken] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  // Fetch link token on component mount
-  useEffect(() => {
-    const fetchLinkToken = async () => {
-      try {
-        const response = await createLinkToken()
-        setLinkToken(response.link_token)
-      } catch (error) {
-        console.error('Error fetching link token:', error)
-        if (onError && error instanceof Error) {
-          onError(error)
+  const onSuccess = React.useCallback(
+    (public_token: string) => {
+      // If the access_token is needed, send public_token to server
+      const exchangePublicTokenForAccessToken = async () => {
+        const response = await fetch('/api/set_access_token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+          },
+          body: `public_token=${public_token}`
+        })
+        if (!response.ok) {
+          dispatch({
+            type: 'SET_STATE',
+            state: {
+              itemId: `no item_id retrieved`,
+              accessToken: `no access_token retrieved`,
+              isItemAccess: false
+            }
+          })
+          return
         }
+        const data = await response.json()
+        dispatch({
+          type: 'SET_STATE',
+          state: {
+            itemId: data.item_id,
+            accessToken: data.access_token,
+            isItemAccess: true
+          }
+        })
       }
-    }
 
-    fetchLinkToken()
-  }, [onError])
-
-  // Handle successful bank connection
-  const handleOnSuccess: PlaidLinkOnSuccess = useCallback(
-    async (publicToken: string, metadata) => {
-      setLoading(true)
-      try {
-        // Exchange public token for access token
-        const response = await exchangePublicToken(publicToken)
-        console.log(
-          'Successfully connected bank account:',
-          metadata.institution?.name
-        )
-
-        if (onSuccess) {
-          onSuccess(response.access_token, response.item_id)
-        }
-      } catch (error) {
-        console.error('Error exchanging public token:', error)
-        if (onError && error instanceof Error) {
-          onError(error)
-        }
-      } finally {
-        setLoading(false)
+      // 'payment_initiation' products do not require the public_token to be exchanged for an access_token.
+      if (isPaymentInitiation) {
+        dispatch({ type: 'SET_STATE', state: { isItemAccess: false } })
+      } else if (isCraProductsExclusively) {
+        // When only CRA products are enabled, only user_token is needed. access_token/public_token exchange is not needed.
+        dispatch({ type: 'SET_STATE', state: { isItemAccess: false } })
+      } else {
+        exchangePublicTokenForAccessToken()
       }
+
+      dispatch({ type: 'SET_STATE', state: { linkSuccess: true } })
+      window.history.pushState('', '', '/')
     },
-    [onSuccess, onError]
+    [dispatch, isPaymentInitiation, isCraProductsExclusively]
   )
 
-  // Configure Plaid Link
-  const config: PlaidLinkOptions = {
-    token: linkToken,
-    onSuccess: handleOnSuccess,
-    onExit: (error, metadata) => {
-      if (error) {
-        console.error('Plaid Link error:', error)
-        if (onError) {
-          onError(new Error(error.error_message))
-        }
-      }
-    }
+  let isOauth = false
+  const config: Parameters<typeof usePlaidLink>[0] = {
+    token: linkToken!,
+    onSuccess
+  }
+
+  if (window.location.href.includes('?oauth_state_id=')) {
+    // TODO: figure out how to delete this ts-ignore
+    // @ts-ignore
+    config.receivedRedirectUri = window.location.href
+    isOauth = true
   }
 
   const { open, ready } = usePlaidLink(config)
 
+  useEffect(() => {
+    if (isOauth && ready) {
+      open()
+    }
+  }, [ready, open, isOauth])
+
   return (
-    <Button
-      type="primary"
-      icon={<BankOutlined />}
-      onClick={() => open()}
-      disabled={!ready || loading}
-      loading={loading}
-      size="large"
-    >
-      {buttonText}
-    </Button>
+    <button type="button" onClick={() => open()} disabled={!ready}>
+      Launch Link
+    </button>
   )
 }
 
-export default PlaidLink
+Link.displayName = 'Link'
+
+export default Link
