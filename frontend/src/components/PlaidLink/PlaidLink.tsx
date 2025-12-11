@@ -1,42 +1,68 @@
 import React, { useEffect, useContext } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
 import Context from '../../context/plaidContext.tsx'
+import { plaidApi } from '../../api/plaidApi.ts'
 
 const Link = () => {
   const { linkToken, isPaymentInitiation, isCraProductsExclusively, dispatch } =
     useContext(Context)
 
-  const onSuccess = React.useCallback(
-    (public_token: string) => {
-      // If the access_token is needed, send public_token to server
-      const exchangePublicTokenForAccessToken = async () => {
-        const response = await fetch('/api/set_access_token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-          },
-          body: `public_token=${public_token}`
+  // Fetch link token on component mount
+  useEffect(() => {
+    const getLinkToken = async () => {
+      try {
+        const token = await plaidApi.createLinkToken()
+        dispatch({
+          type: 'SET_STATE',
+          state: { linkToken: token }
         })
-        if (!response.ok) {
-          dispatch({
-            type: 'SET_STATE',
-            state: {
-              itemId: `no item_id retrieved`,
-              accessToken: `no access_token retrieved`,
-              isItemAccess: false
-            }
-          })
-          return
-        }
-        const data = await response.json()
+      } catch (error) {
+        console.error('Error fetching link token:', error)
         dispatch({
           type: 'SET_STATE',
           state: {
-            itemId: data.item_id,
-            accessToken: data.access_token,
-            isItemAccess: true
+            linkTokenError: {
+              error_type: 'LINK_TOKEN',
+              error_code: 'FETCH_ERROR',
+              error_message:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to fetch link token'
+            },
+            isError: true
           }
         })
+      }
+    }
+
+    getLinkToken()
+  }, [dispatch])
+
+  const onSuccess = React.useCallback(
+    async (public_token: string) => {
+      // If the access_token is needed, send public_token to server
+      const exchangePublicTokenForAccessToken = async () => {
+        try {
+          const data = await plaidApi.exchangePublicToken(public_token)
+          dispatch({
+            type: 'SET_STATE',
+            state: {
+              itemId: data.item_id,
+              accessToken: data.access_token,
+              isItemAccess: true
+            }
+          })
+        } catch (error) {
+          console.error('Error exchanging public token:', error)
+          dispatch({
+            type: 'SET_STATE',
+            state: {
+              itemId: 'no item_id retrieved',
+              accessToken: 'no access_token retrieved',
+              isItemAccess: false
+            }
+          })
+        }
       }
 
       // 'payment_initiation' products do not require the public_token to be exchanged for an access_token.
@@ -46,7 +72,7 @@ const Link = () => {
         // When only CRA products are enabled, only user_token is needed. access_token/public_token exchange is not needed.
         dispatch({ type: 'SET_STATE', state: { isItemAccess: false } })
       } else {
-        exchangePublicTokenForAccessToken()
+        await exchangePublicTokenForAccessToken()
       }
 
       dispatch({ type: 'SET_STATE', state: { linkSuccess: true } })
@@ -62,7 +88,6 @@ const Link = () => {
   }
 
   if (window.location.href.includes('?oauth_state_id=')) {
-    // TODO: figure out how to delete this ts-ignore
     // @ts-ignore
     config.receivedRedirectUri = window.location.href
     isOauth = true
@@ -78,7 +103,7 @@ const Link = () => {
 
   return (
     <button type="button" onClick={() => open()} disabled={!ready}>
-      Launch Link
+      {ready ? 'Connect Bank Account' : 'Loading...'}
     </button>
   )
 }
