@@ -23,7 +23,7 @@ export const config: AppConfig = {
   // PLAID_CLIENT_ID: requireEnv('PLAID_CLIENT_ID'),
   PLAID_CLIENT_ID: process.env.PLAID_CLIENT_ID || '64f8f6f4d6f5a900018a8e7d', 
   // PLAID_SECRET: requireEnv('PLAID_SECRET'),
-  PLAID_SECRET: process.env.PLAID_SECRET || 'f6f4d6f5a900018a8e7d64f8f',
+  PLAID_SECRET: process.env.PLAID_SECRET || '',
   PLAID_ENV: (process.env.PLAID_ENV as AppConfig['PLAID_ENV']) || 'sandbox',
   PLAID_PRODUCTS: (process.env.PLAID_PRODUCTS || 'transactions').split(',').map(s => s.trim()),
   PLAID_COUNTRY_CODES: (process.env.PLAID_COUNTRY_CODES || 'US').split(',').map(s => s.trim()),
