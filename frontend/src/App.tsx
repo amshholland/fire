@@ -1,73 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import Dashboard from './pages/Dashboard/Dashboard.tsx';
-import theme from './theme.ts'
-import { ConfigProvider } from 'antd';
-import Header from './components/Header/Header.tsx';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import useItems from './hooks/useItems.ts';
-import { QuickstartProvider } from './context/plaidContext.tsx';
+import React, { useEffect, useContext, useCallback } from 'react'
 
-const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userInfo, setUserInfo] = useState<any>(null);
-  const { items, addItem } = useItems();
+import Header from './components/Headers/index.tsx'
+import Products from './components/ProductTypes/Products.tsx'
+import Items from './components/ProductTypes/Items.tsx'
+import Context from './context/index.tsx'
 
-  const handleSubmit = (event: { preventDefault: () => void; target: any }) => {
-    event.preventDefault();
-    const form = event.target;
-    const name = form.elements.name.value;
-    addItem(name);
-    form.reset();
-  };
-  
-  const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+import styles from './App.css'
 
-  // Check localStorage for existing user session on mount
-  useEffect(() => {
-    const storedUserInfo = localStorage.getItem('userInfo');
-    if (storedUserInfo) {
-      try {
-        const user = JSON.parse(storedUserInfo);
-        setUserInfo(user);
-        setIsLoggedIn(true);
-      } catch (error) {
-        console.error('Error parsing stored user info:', error);
-        localStorage.removeItem('userInfo');
-      }
+const App = () => {
+  const { linkSuccess, isPaymentInitiation, itemId, dispatch } =
+    useContext(Context)
+
+  const getInfo = useCallback(async () => {
+    const response = await fetch('/api/info', { method: 'POST' })
+    if (!response.ok) {
+      dispatch({ type: 'SET_STATE', state: { backend: false } })
+      return { paymentInitiation: false }
     }
-  }, []);
+    const data = await response.json()
+    const paymentInitiation: boolean =
+      data.products.includes('payment_initiation')
 
-  const handleLoginSuccess = (user: any) => {
-    setUserInfo(user);
-    setIsLoggedIn(true);
-  };
+    // CRA products are those that start with "cra_"
+    const craProducts = data.products.filter((product: string) =>
+      product.startsWith('cra_')
+    )
+    const isUserTokenFlow: boolean = craProducts.length > 0
+    const isCraProductsExclusively: boolean =
+      craProducts.length > 0 && craProducts.length === data.products.length
 
-  const handleLogout = () => {
-    localStorage.removeItem('userInfo');
-    setUserInfo(null);
-    setIsLoggedIn(false);
-  };
+    dispatch({
+      type: 'SET_STATE',
+      state: {
+        products: data.products,
+        isPaymentInitiation: paymentInitiation,
+        isCraProductsExclusively: isCraProductsExclusively,
+        isUserTokenFlow: isUserTokenFlow
+      }
+    })
+    return { paymentInitiation, isUserTokenFlow }
+  }, [dispatch])
 
-  if (!clientId) {
-    console.error('Google Client ID is missing. Check your .env file.');
-    return null;
-  }
+  const generateUserToken = useCallback(async () => {
+    const response = await fetch('api/create_user_token', { method: 'POST' })
+    if (!response.ok) {
+      dispatch({ type: 'SET_STATE', state: { userToken: null } })
+      return
+    }
+    const data = await response.json()
+    if (data) {
+      if (data.error != null) {
+        dispatch({
+          type: 'SET_STATE',
+          state: {
+            linkToken: null,
+            linkTokenError: data.error
+          }
+        })
+        return
+      }
+      dispatch({ type: 'SET_STATE', state: { userToken: data.user_token } })
+      return data.user_token
+    }
+  }, [dispatch])
+
+  const generateToken = useCallback(
+    async (isPaymentInitiation: boolean) => {
+      // Link tokens for 'payment_initiation' use a different creation flow in your backend.
+      const path = isPaymentInitiation
+        ? '/api/create_link_token_for_payment'
+        : '/api/create_link_token'
+      const response = await fetch(path, {
+        method: 'POST'
+      })
+      if (!response.ok) {
+        dispatch({ type: 'SET_STATE', state: { linkToken: null } })
+        return
+      }
+      const data = await response.json()
+      if (data) {
+        if (data.error != null) {
+          dispatch({
+            type: 'SET_STATE',
+            state: {
+              linkToken: null,
+              linkTokenError: data.error
+            }
+          })
+          return
+        }
+        dispatch({ type: 'SET_STATE', state: { linkToken: data.link_token } })
+      }
+      // Save the link_token to be used later in the Oauth flow.
+      localStorage.setItem('link_token', data.link_token)
+    },
+    [dispatch]
+  )
+
+  useEffect(() => {
+    const init = async () => {
+      const { paymentInitiation, isUserTokenFlow } = await getInfo() // used to determine which path to take when generating token
+      // do not generate a new token for OAuth redirect; instead
+      // setLinkToken from localStorage
+      if (window.location.href.includes('?oauth_state_id=')) {
+        dispatch({
+          type: 'SET_STATE',
+          state: {
+            linkToken: localStorage.getItem('link_token')
+          }
+        })
+        return
+      }
+
+      if (isUserTokenFlow) {
+        await generateUserToken()
+      }
+      generateToken(paymentInitiation)
+    }
+    init()
+  }, [dispatch, generateToken, generateUserToken, getInfo])
 
   return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <QuickstartProvider>
-        <ConfigProvider theme={theme}>
-          <Header userInfo={userInfo} onLogout={handleLogout} />
-          <Dashboard />
-          {/* {isLoggedIn ? (
-            <Dashboard />
-          ) : (
-            <GoogleAuth onLoginSuccess={handleLoginSuccess} />
-          )} */}
-        </ConfigProvider>
-      </QuickstartProvider>
-    </GoogleOAuthProvider>
-  );
-};
+    <div className={styles.App}>
+      <div className={styles.container}>
+        <Header />
+        {linkSuccess && (
+          <>
+            <Products />
+            {!isPaymentInitiation && itemId && <Items />}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
-export default App;
+export default App
