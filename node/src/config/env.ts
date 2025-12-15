@@ -21,7 +21,7 @@ const requireEnv = (key: string): string => {
 export const config: AppConfig = {
   APP_PORT: Number(process.env.APP_PORT || 8000),
   // PLAID_CLIENT_ID: requireEnv('PLAID_CLIENT_ID'),
-  PLAID_CLIENT_ID: process.env.PLAID_CLIENT_ID || '64f8f6f4d6f5a900018a8e7d', 
+  PLAID_CLIENT_ID: process.env.PLAID_CLIENT_ID || '', 
   // PLAID_SECRET: requireEnv('PLAID_SECRET'),
   PLAID_SECRET: process.env.PLAID_SECRET || '',
   PLAID_ENV: (process.env.PLAID_ENV as AppConfig['PLAID_ENV']) || 'sandbox',
