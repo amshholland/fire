@@ -3,7 +3,7 @@ import { Products } from 'plaid';
 
 dotenv.config();
 
-export const APP_PORT: number = parseInt(process.env.APP_PORT || '3000', 10);
+export const APP_PORT: number = parseInt(process.env.APP_PORT || '3030', 10);
 export const PLAID_CLIENT_ID: string = process.env.PLAID_CLIENT_ID || '';
 export const PLAID_SECRET: string = process.env.PLAID_SECRET || '';
 export const PLAID_ENV: string = process.env.PLAID_ENV || 'sandbox';

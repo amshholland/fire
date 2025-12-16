@@ -1,5 +1,5 @@
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
-import { config } from './env.js';
+import { config } from './env';
 
 const plaidConfig = new Configuration({
   basePath: PlaidEnvironments[config.PLAID_ENV],
