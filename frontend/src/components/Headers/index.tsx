@@ -50,18 +50,6 @@ const Header = () => {
                 correctly.
               </div>
               <div>
-                If you are on a Windows machine, please ensure that you have
-                cloned the repo with{' '}
-                <link href="https://github.com/plaid/quickstart#special-instructions-for-windows">
-                  symlinks turned on.
-                </link>{' '}
-                You can also try checking your{' '}
-                <link href="https://dashboard.plaid.com/activity/logs">
-                  activity log
-                </link>{' '}
-                on your Plaid dashboard.
-              </div>
-              <div>
                 Error Code: <code>{linkTokenError.error_code}</code>
               </div>
               <div>
@@ -86,13 +74,6 @@ const Header = () => {
               <h4 className={styles.subtitle}>
                 Congrats! Your payment is now confirmed.
                 <p />
-                <div>
-                  You can see information of all your payments in the{' '}
-                  <link href="https://dashboard.plaid.com/activity/payments">
-                    Payments Dashboard
-                  </link>
-                  .
-                </div>
               </h4>
               <p className={styles.requests}>
                 Now that the 'payment_id' stored in your server, you can use it
@@ -103,11 +84,7 @@ const Header = () => {
             /* If not using the payment_initiation product, show the item_id and access_token information */ <>
               {isItemAccess ? (
                 <h4 className={styles.subtitle}>
-                  Congrats! By linking an account, you have created an{' '}
-                  <link href="http://plaid.com/docs/quickstart/glossary/#item">
-                    Item
-                  </link>
-                  .
+                  Congrats! By linking an account, you have created an
                 </h4>
               ) : userToken ? (
                 <h4 className={styles.subtitle}>
