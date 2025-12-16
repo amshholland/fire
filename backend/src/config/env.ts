@@ -12,17 +12,9 @@ export type AppConfig = {
   SIGNAL_RULESET_KEY?: string;
 };
 
-const requireEnv = (key: string): string => {
-  const v = process.env[key];
-  if (!v) throw new Error(`Missing required env: ${key}`);
-  return v;
-};
-
 export const config: AppConfig = {
   APP_PORT: Number(process.env.APP_PORT || 8000),
-  // PLAID_CLIENT_ID: requireEnv('PLAID_CLIENT_ID'),
   PLAID_CLIENT_ID: process.env.PLAID_CLIENT_ID || '', 
-  // PLAID_SECRET: requireEnv('PLAID_SECRET'),
   PLAID_SECRET: process.env.PLAID_SECRET || '',
   PLAID_ENV: (process.env.PLAID_ENV as AppConfig['PLAID_ENV']) || 'sandbox',
   PLAID_PRODUCTS: (process.env.PLAID_PRODUCTS || 'transactions').split(',').map(s => s.trim()),
