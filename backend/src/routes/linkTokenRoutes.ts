@@ -49,4 +49,41 @@ router.post('/create_link_token', async (req: Request, res: Response, next: Next
   }
 });
 
+// Alias for payment_initiation variant
+router.post('/create_link_token_for_payment', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const configs: LinkTokenCreateRequest = {
+      user: {
+        client_user_id: 'user-id',
+      },
+      client_name: 'Plaid Quickstart',
+      products: [Products.PaymentInitiation],
+      country_codes: PLAID_COUNTRY_CODES as CountryCode[],
+      language: 'en',
+    };
+
+    if (PLAID_REDIRECT_URI) {
+      configs.redirect_uri = PLAID_REDIRECT_URI;
+    }
+
+    const createTokenResponse: LinkTokenCreateResponse = (await plaidClient.linkTokenCreate(configs)).data;
+    res.json(createTokenResponse);
+  } catch (error) {
+    next(apiErrorFormatter(error));
+  }
+});
+
+// Placeholder for create_user_token
+router.post('/create_user_token', (req: Request, res: Response) => {
+  res.json({ user_token: 'user-token-placeholder' });
+});
+
+// Placeholder for set_access_token (exchange public token)
+router.post('/set_access_token', (req: Request, res: Response) => {
+  res.json({
+    access_token: 'access-token-placeholder',
+    item_id: 'item-id-placeholder'
+  });
+});
+
 export default router;

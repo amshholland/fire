@@ -22,9 +22,14 @@ import { signalRouter } from './routes/signal';
 
 const app = express();
 
+// Enable CORS for frontend on port 3000
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
+
 app.use(express.urlencoded({ extended: false }));
-app.use(express());
-app.use(cors());
+app.use(express.json());
 
 app.use('/api', infoRouter);
 app.use('/api', linkRouter);
