@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 
-import Header from './components/Headers/Headers.tsx'
+import Header from './components/Header/Header.tsx'
 import Products from './components/ProductTypes/Products.tsx'
 import Items from './components/ProductTypes/Items.tsx'
 import { useContext } from 'react'
