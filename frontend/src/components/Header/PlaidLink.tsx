@@ -1,5 +1,5 @@
 import React from 'react'
-import Link from '../Link/Link.tsx'
+import PlaidLinkButton from '../PlaidLinkButton/PlaidLinkButton.tsx'
 
 interface LinkSectionProps {
   backend: boolean
@@ -14,7 +14,7 @@ interface LinkSectionProps {
 /**
  * Link token section - displays status and Plaid Link button or errors
  */
-const LinkSection: React.FC<LinkSectionProps> = ({
+const PlaidLink: React.FC<LinkSectionProps> = ({
   backend,
   linkToken,
   linkTokenError
@@ -51,7 +51,7 @@ const LinkSection: React.FC<LinkSectionProps> = ({
     return <button disabled>Loading...</button>
   }
 
-  return <Link />
+  return <PlaidLinkButton />
 }
 
-export default LinkSection
+export default PlaidLink

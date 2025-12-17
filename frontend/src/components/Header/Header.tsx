@@ -1,8 +1,8 @@
-import React, { useContext } from 'react'
+import { useContext } from 'react'
 import Context from '../../context/index.tsx'
 import { useUserAuth } from '../../hooks/useUserAuth.ts'
 import UserSection from './UserSection.tsx'
-import LinkSection from './LinkSection.tsx'
+import PlaidLink from './PlaidLink.tsx'
 import TokensDisplay from './TokensDisplay.tsx'
 
 const Header = () => {
@@ -28,7 +28,7 @@ const Header = () => {
       />
 
       {!linkSuccess ? (
-        <LinkSection
+        <PlaidLink
           backend={backend}
           linkToken={linkToken}
           linkTokenError={linkTokenError}
