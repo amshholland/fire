@@ -33,7 +33,6 @@ const Header = () => {
   }, [])
 
   const handleLoginSuccess = (userData: any) => {
-    console.log('Login successful:', userData)
     setUser(userData)
     // Persist user to localStorage
     localStorage.setItem('googleUser', JSON.stringify(userData))

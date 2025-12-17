@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { Table, Button, message, Spin } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
+import Context from '../../context/index.tsx'
 
 interface DataType {
   transaction_id: string
@@ -14,6 +15,14 @@ interface DataType {
 const Transactions: React.FC = () => {
   const [dataSource, setDataSource] = useState<DataType[]>([])
   const [loading, setLoading] = useState(false)
+
+  const { accessToken } = useContext(Context)
+
+  useEffect(() => {
+    if (accessToken) {
+      fetchTransactions()
+    }
+  }, [accessToken])
 
   const fetchTransactions = async () => {
     setLoading(true)
@@ -37,10 +46,6 @@ const Transactions: React.FC = () => {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    fetchTransactions()
-  }, [])
 
   const columns: ColumnsType<DataType> = [
     {

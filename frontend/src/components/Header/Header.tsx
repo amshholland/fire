@@ -13,7 +13,6 @@ const Header = () => {
     accessToken,
     userToken,
     linkToken,
-    linkSuccess,
     isItemAccess,
     backend,
     linkTokenError
@@ -27,7 +26,7 @@ const Header = () => {
         onLogout={handleLogout}
       />
 
-      {!linkSuccess ? (
+      {!accessToken ? (
         <PlaidLink
           backend={backend}
           linkToken={linkToken}

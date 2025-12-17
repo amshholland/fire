@@ -26,7 +26,6 @@ export const useUserAuth = () => {
    * Handle successful login and persist user
    */
   const handleLoginSuccess = useCallback((userData: any) => {
-    console.log('Login successful:', userData)
     setUser(userData)
     localStorage.setItem(STORAGE_KEYS.GOOGLE_USER, JSON.stringify(userData))
   }, [])

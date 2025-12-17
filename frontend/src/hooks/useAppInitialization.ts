@@ -1,5 +1,4 @@
 import { useContext, useCallback } from 'react'
-import { Dispatch } from 'react'
 import Context from '../context/index.tsx'
 import { API_ENDPOINTS } from '../config/apiConfig.ts'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
@@ -14,7 +13,7 @@ interface QuickstartAction {
  * Fetch product information from backend and update state
  */
 export const useFetchProductInfo = () => {
-  const { dispatch } = useContext(Context)
+  const { dispatch, accessToken } = useContext(Context)
 
   return useCallback(async () => {
     try {
@@ -26,6 +25,12 @@ export const useFetchProductInfo = () => {
       }
 
       const data = await response.json()
+      
+      // Detect server restart: if frontend has accessToken but backend's state is empty, server restarted
+      if (accessToken && !data.access_token) {
+        dispatch({ type: 'SET_STATE', state: { accessToken: null, linkSuccess: false, itemId: null } })
+      }
+      
       const paymentInitiation = data.products.includes('payment_initiation')
       const craProducts = data.products.filter((product: string) =>
         product.startsWith('cra_')
@@ -50,7 +55,7 @@ export const useFetchProductInfo = () => {
       dispatch({ type: 'SET_STATE', state: { backend: false } })
       return { paymentInitiation: false, isUserTokenFlow: false }
     }
-  }, [dispatch])
+  }, [dispatch, accessToken])
 }
 
 /**
