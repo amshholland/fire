@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { plaidClient } from '../config/plaid.js';
+import { plaidClient } from '../clients/plaidClient.js';
 import { state } from '../state/store.js';
 import { sleep } from '../utils/time.js';
 import { prettyPrint } from '../utils/logger.js';

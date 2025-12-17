@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import moment from 'moment';
 import { v4 as uuidv4 } from 'uuid';
-import { plaidClient } from '../config/plaid.js';
+import { plaidClient } from '../clients/plaidClient.js';
 import { config } from '../config/env.js';
 import { state } from '../state/store.js';
 import { prettyPrint } from '../utils/logger.js';

@@ -1,13 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
 import moment from 'moment';
-import { plaidClient } from '../services/plaidService';
+import { plaidClient } from '../clients/plaidClient';
 import { PLAID_PRODUCTS, PLAID_COUNTRY_CODES, PLAID_REDIRECT_URI, PLAID_ANDROID_PACKAGE_NAME } from '../config';
 import { Products, CountryCode, LinkTokenCreateRequest, LinkTokenCreateResponse } from 'plaid'; 
 import { apiErrorFormatter } from '../utils/errors';
 
 const router = express.Router();
 
-router.post('/info', (req: Request, res: Response) => {
+router.post('/info', (_req: Request, res: Response) => {
   res.json({
     item_id: null,
     access_token: null,
@@ -15,7 +15,7 @@ router.post('/info', (req: Request, res: Response) => {
   });
 });
 
-router.post('/create_link_token', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/create_link_token', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const configs: LinkTokenCreateRequest = {
       user: {
@@ -50,7 +50,7 @@ router.post('/create_link_token', async (req: Request, res: Response, next: Next
 });
 
 // Alias for payment_initiation variant
-router.post('/create_link_token_for_payment', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/create_link_token_for_payment', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const configs: LinkTokenCreateRequest = {
       user: {
@@ -74,12 +74,12 @@ router.post('/create_link_token_for_payment', async (req: Request, res: Response
 });
 
 // Placeholder for create_user_token
-router.post('/create_user_token', (req: Request, res: Response) => {
+router.post('/create_user_token', (_req: Request, res: Response) => {
   res.json({ user_token: 'user-token-placeholder' });
 });
 
 // Placeholder for set_access_token (exchange public token)
-router.post('/set_access_token', (req: Request, res: Response) => {
+router.post('/set_access_token', (_req: Request, res: Response) => {
   res.json({
     access_token: 'access-token-placeholder',
     item_id: 'item-id-placeholder'
