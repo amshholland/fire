@@ -4,6 +4,7 @@ import Header from './components/Headers/index.tsx'
 import Products from './components/ProductTypes/Products.tsx'
 import Items from './components/ProductTypes/Items.tsx'
 import Context from './context/index.tsx'
+import Transactions from './pages/Transactions/Transactions.tsx'
 
 import styles from './App.css'
 
@@ -128,6 +129,7 @@ const App = () => {
           <>
             <Products />
             {!isPaymentInitiation && itemId && <Items />}
+          <Transactions/>
           </>
         )}
       </div>
