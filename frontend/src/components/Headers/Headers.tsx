@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react'
-
+import { Button } from 'antd'
+import { LogoutOutlined } from '@ant-design/icons'
 import Link from '../Link/Link.tsx'
 import Context from '../../context/index.tsx'
 
@@ -8,6 +9,7 @@ import GoogleAuth from '../GoogleAuth/GoogleAuth.tsx'
 
 const Header = () => {
   const [user, setUser] = useState<any>(null)
+
   const {
     itemId,
     accessToken,
@@ -24,9 +26,27 @@ const Header = () => {
     setUser(userData)
   }
 
+  const handleLogout = () => {
+    setUser(null)
+  }
+
   return (
     <div className={styles.grid}>
       {!user && <GoogleAuth onLoginSuccess={handleLoginSuccess} />}
+      {user && (
+        <div className="header-user">
+          <span>Welcome, {user.name || user.email}</span>
+          {handleLogout && (
+            <Button
+              type="text"
+              icon={<LogoutOutlined />}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          )}
+        </div>
+      )}
       {!linkSuccess ? (
         <>
           {/* message if backend is not running and there is no link token */}
