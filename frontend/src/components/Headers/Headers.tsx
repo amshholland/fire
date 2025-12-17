@@ -1,10 +1,8 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import { Button } from 'antd'
 import { LogoutOutlined } from '@ant-design/icons'
 import Link from '../Link/Link.tsx'
 import Context from '../../context/index.tsx'
-
-import styles from './index.css'
 import GoogleAuth from '../GoogleAuth/GoogleAuth.tsx'
 
 const Header = () => {
@@ -21,17 +19,34 @@ const Header = () => {
     linkTokenError
   } = useContext(Context)
 
+  // Load user from localStorage on component mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('googleUser')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error('Failed to parse stored user:', error)
+        localStorage.removeItem('googleUser')
+      }
+    }
+  }, [])
+
   const handleLoginSuccess = (userData: any) => {
     console.log('Login successful:', userData)
     setUser(userData)
+    // Persist user to localStorage
+    localStorage.setItem('googleUser', JSON.stringify(userData))
   }
 
   const handleLogout = () => {
     setUser(null)
+    // Remove user from localStorage
+    localStorage.removeItem('googleUser')
   }
 
   return (
-    <div className={styles.grid}>
+    <div>
       {!user && <GoogleAuth onLoginSuccess={handleLoginSuccess} />}
       {user && (
         <div className="header-user">
@@ -73,11 +88,11 @@ const Header = () => {
               <div>Error Message: {linkTokenError.error_message}</div>
             </div>
           ) : linkToken === '' ? (
-            <div className={styles.linkButton}>
+            <div>
               <button disabled>Loading...</button>
             </div>
           ) : (
-            <div className={styles.linkButton}>
+            <div>
               <Link />
             </div>
           )}
@@ -85,44 +100,40 @@ const Header = () => {
       ) : (
         /* If not using the payment_initiation product, show the item_id and access_token information */ <>
           {isItemAccess ? (
-            <h4 className={styles.subtitle}>
-              Congrats! By linking an account, you have created an
-            </h4>
+            <h4>Congrats! By linking an account, you have created an</h4>
           ) : userToken ? (
-            <h4 className={styles.subtitle}>
-              Congrats! You have successfully linked data to a User.
-            </h4>
+            <h4>Congrats! You have successfully linked data to a User.</h4>
           ) : (
-            <h4 className={styles.subtitle}>
+            <h4>
               <div>
                 Unable to create an item. Please check your backend server
               </div>
             </h4>
           )}
-          <div className={styles.itemAccessContainer}>
+          <div>
             {itemId && (
-              <p className={styles.itemAccessRow}>
-                <span className={styles.idName}>item_id</span>
-                <span className={styles.tokenText}>{itemId}</span>
+              <p>
+                <span>item_id</span>
+                <span>{itemId}</span>
               </p>
             )}
 
             {accessToken && (
-              <p className={styles.itemAccessRow}>
-                <span className={styles.idName}>access_token</span>
-                <span className={styles.tokenText}>{accessToken}</span>
+              <p>
+                <span>access_token</span>
+                <span>{accessToken}</span>
               </p>
             )}
 
             {userToken && (
-              <p className={styles.itemAccessRow}>
-                <span className={styles.idName}>user_token</span>
-                <span className={styles.tokenText}>{userToken}</span>
+              <p>
+                <span>user_token</span>
+                <span>{userToken}</span>
               </p>
             )}
           </div>
           {(isItemAccess || userToken) && (
-            <p className={styles.requests}>
+            <p>
               Now that you have {accessToken && 'an access_token'}
               {accessToken && userToken && ' and '}
               {userToken && 'a user_token'}, you can make all of the following
