@@ -1,4 +1,4 @@
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
 
 import Link from '../Link/Link.tsx'
 import Context from '../../context/index.tsx'
@@ -7,6 +7,7 @@ import styles from './index.css'
 import GoogleAuth from '../GoogleAuth/GoogleAuth.tsx'
 
 const Header = () => {
+  const [user, setUser] = useState<any>(null)
   const {
     itemId,
     accessToken,
@@ -18,13 +19,14 @@ const Header = () => {
     linkTokenError
   } = useContext(Context)
 
-  const handleLoginSuccess = (user: any) => {
-    console.log('Login successful:', user)
+  const handleLoginSuccess = (userData: any) => {
+    console.log('Login successful:', userData)
+    setUser(userData)
   }
 
   return (
     <div className={styles.grid}>
-      <GoogleAuth onLoginSuccess={handleLoginSuccess} />
+      {!user && <GoogleAuth onLoginSuccess={handleLoginSuccess} />}
       {!linkSuccess ? (
         <>
           {/* message if backend is not running and there is no link token */}
