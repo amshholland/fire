@@ -1,6 +1,6 @@
 import React, { useEffect, useContext, useCallback } from 'react'
 
-import Header from './components/Headers/index.tsx'
+import Header from './components/Headers/Headers.tsx'
 import Products from './components/ProductTypes/Products.tsx'
 import Items from './components/ProductTypes/Items.tsx'
 import Context from './context/index.tsx'

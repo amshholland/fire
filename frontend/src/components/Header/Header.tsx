@@ -8,11 +8,11 @@ interface HeaderProps {
   onLogout?: () => void
 }
 
-const Header: React.FC<HeaderProps> = () => {
+const Header: React.FC<HeaderProps> = ({ userInfo, onLogout }) => {
   return (
     <div className="Header">
       <div className="header-title">FIRE App</div>
-      {/* {userInfo && (
+      {userInfo && (
         <div className="header-user">
           <span>Welcome, {userInfo.name || userInfo.email}</span>
           {onLogout && (
@@ -21,7 +21,7 @@ const Header: React.FC<HeaderProps> = () => {
             </Button>
           )}
         </div>
-      )} */}
+      )}
     </div>
   )
 }

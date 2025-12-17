@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
 
-import Link from '../Link/index.tsx'
+import Link from '../Link/Link.tsx'
 import Context from '../../context/index.tsx'
 
 import styles from './index.css'

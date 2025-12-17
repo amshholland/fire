@@ -1,6 +1,6 @@
 import React from 'react';
 import './Dashboard.css'
-import Link from '../../components/Link/index.tsx'
+import Link from '../../components/Link/Link.tsx'
 import Transactions from '../Transactions/Transactions.tsx'
 
 const Dashboard: React.FC = () => {
