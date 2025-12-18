@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react'
 import { Table, Button, message, Spin } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
-import Context from '../../context/index.tsx'
+import Context from '../../context/plaidContext.tsx'
 
 interface DataType {
   transaction_id: string

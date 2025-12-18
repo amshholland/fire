@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import Context from '../../context/index.tsx'
+import Context from '../../context/plaidContext.tsx'
 import { useUserAuth } from '../../hooks/useUserAuth.ts'
 import UserSection from './UserSection.tsx'
 import PlaidLink from './PlaidLink.tsx'

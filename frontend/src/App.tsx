@@ -4,7 +4,7 @@ import Header from './components/Header/Header.tsx'
 import Products from './components/ProductTypes/Products.tsx'
 import Items from './components/ProductTypes/Items.tsx'
 import { useContext } from 'react'
-import Context from './context/index.tsx'
+import Context from './context/plaidContext.tsx'
 import Transactions from './pages/Transactions/Transactions.tsx'
 import { useAppInitialization } from './hooks/useAppInitialization.ts'
 

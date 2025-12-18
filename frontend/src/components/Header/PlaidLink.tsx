@@ -29,7 +29,7 @@ const PlaidLink: React.FC<LinkSectionProps> = ({
     )
   }
 
-  if (linkToken == null) {
+  if (linkToken === null) {
     return (
       <div>
         <div>

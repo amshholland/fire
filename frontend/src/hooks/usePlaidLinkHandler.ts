@@ -1,6 +1,6 @@
 import { useContext, useCallback, useEffect, useState } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
-import Context from '../context/index.tsx'
+import Context from '../context/plaidContext.tsx'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
 
 /**
@@ -109,6 +109,7 @@ export const usePlaidLinkHandler = () => {
       const accessToken = localStorage.getItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN)
       const linkSuccess = localStorage.getItem(STORAGE_KEYS.PLAID_LINK_SUCCESS)
 
+      // Only restore linkSuccess if we have both itemId and accessToken
       if (itemId && accessToken && linkSuccess === 'true') {
         dispatch({
           type: 'SET_STATE',
@@ -117,6 +118,19 @@ export const usePlaidLinkHandler = () => {
             accessToken,
             linkSuccess: true,
             isItemAccess: !isPaymentInitiation && !isCraProductsExclusively
+          }
+        })
+      } else {
+        // Clear linkSuccess if tokens are missing
+        dispatch({
+          type: 'SET_STATE',
+          state: {
+            linkSuccess: false,
+            itemId: null,
+            accessToken: null,
+            userToken: null,
+            linkToken: '',
+            isItemAccess: true
           }
         })
       }
