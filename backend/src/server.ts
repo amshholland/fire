@@ -52,5 +52,5 @@ app.use('/api', apiErrorMiddleware);
 
 app.listen(appConfig.APP_PORT, () => {
   console.log(`plaid-quickstart server listening on port ${appConfig.APP_PORT}`);
-  console.log(appConfig.PLAID_CLIENT_ID || 'no client id found');
+  // console.log(appConfig.PLAID_CLIENT_ID || 'no client id found');
 });

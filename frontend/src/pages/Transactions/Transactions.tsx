@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useContext, useCallback } from 'react'
 import { Table, Button, message, Spin } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
 import Context from '../../context/index.tsx'
@@ -18,18 +18,15 @@ const Transactions: React.FC = () => {
 
   const { accessToken } = useContext(Context)
 
-  useEffect(() => {
-    if (accessToken) {
-      fetchTransactions()
-    }
-  }, [accessToken])
-
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch('/api/transactions', {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        }
       })
 
       if (!response.ok) {
@@ -45,7 +42,13 @@ const Transactions: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [accessToken])
+
+  useEffect(() => {
+    if (accessToken !== null) {
+      fetchTransactions()
+    }
+  }, [accessToken, fetchTransactions])
 
   const columns: ColumnsType<DataType> = [
     {
@@ -73,6 +76,17 @@ const Transactions: React.FC = () => {
         Array.isArray(category) ? category.join(', ') : category || 'N/A'
     }
   ]
+
+  if (!accessToken) {
+    return (
+      <div>
+        <h1>Transactions</h1>
+        <p style={{ color: 'red' }}>
+          Please link your Plaid account first to view transactions
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div>

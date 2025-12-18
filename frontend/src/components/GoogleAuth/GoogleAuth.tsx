@@ -17,10 +17,10 @@ function GoogleAuth({ onLoginSuccess }: GoogleAuthProps) {
       credentialResponse.credential !== undefined
     ) {
       const userInfo = jwtDecode(credentialResponse.credential)
-      
+
       // Store user info in localStorage for persistence
       localStorage.setItem('userInfo', JSON.stringify(userInfo))
-      
+
       onLoginSuccess(userInfo)
     }
   }

@@ -4,16 +4,12 @@ import { API_ENDPOINTS } from '../config/apiConfig.ts'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
 import { isOAuthRedirect } from '../utils/oauthUtils.ts'
 
-interface QuickstartAction {
-  type: 'SET_STATE'
-  state: Record<string, any>
-}
 
 /**
  * Fetch product information from backend and update state
  */
 export const useFetchProductInfo = () => {
-  const { dispatch, accessToken } = useContext(Context)
+  const { dispatch } = useContext(Context)
 
   return useCallback(async () => {
     try {
@@ -27,9 +23,9 @@ export const useFetchProductInfo = () => {
       const data = await response.json()
       
       // Detect server restart: if frontend has accessToken but backend's state is empty, server restarted
-      if (accessToken && !data.access_token) {
-        dispatch({ type: 'SET_STATE', state: { accessToken: null, linkSuccess: false, itemId: null } })
-      }
+      // if (accessToken && !data.access_token) {
+      //   dispatch({ type: 'SET_STATE', state: { accessToken: null, linkSuccess: false, itemId: null } })
+      // }
       
       const paymentInitiation = data.products.includes('payment_initiation')
       const craProducts = data.products.filter((product: string) =>
@@ -55,7 +51,7 @@ export const useFetchProductInfo = () => {
       dispatch({ type: 'SET_STATE', state: { backend: false } })
       return { paymentInitiation: false, isUserTokenFlow: false }
     }
-  }, [dispatch, accessToken])
+  }, [dispatch])
 }
 
 /**
@@ -65,6 +61,7 @@ export const useGenerateUserToken = () => {
   const { dispatch } = useContext(Context)
 
   return useCallback(async () => {
+    console.log('Generating user token...')
     try {
       const response = await fetch(API_ENDPOINTS.CREATE_USER_TOKEN, {
         method: 'POST'
@@ -89,6 +86,8 @@ export const useGenerateUserToken = () => {
       }
 
       dispatch({ type: 'SET_STATE', state: { userToken: data.user_token } })
+      
+      console.log('Generated user token:', data.user_token)
       return data.user_token
     } catch (error) {
       console.error('Failed to generate user token:', error)
@@ -150,8 +149,10 @@ export const useAppInitialization = () => {
   const fetchProductInfo = useFetchProductInfo()
   const generateUserToken = useGenerateUserToken()
   const generateLinkToken = useGenerateLinkToken()
+  console.log('useAppInitialization hook initialized')
 
   return useCallback(async () => {
+    console.log('App Initialization started')
     const { paymentInitiation, isUserTokenFlow } = await fetchProductInfo()
 
     // Handle OAuth redirect - restore link token from storage
@@ -164,9 +165,10 @@ export const useAppInitialization = () => {
       })
       return
     }
-
+    console.log('App Initialization - isUserTokenFlow:', isUserTokenFlow)
     // Generate tokens based on product configuration
     if (isUserTokenFlow) {
+      console.log('User token flow detected, generating user token...')
       await generateUserToken()
     }
     await generateLinkToken(paymentInitiation)

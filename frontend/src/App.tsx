@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 
 import Header from './components/Header/Header.tsx'
 import Products from './components/ProductTypes/Products.tsx'
@@ -22,6 +22,7 @@ const App = () => {
     <div className={styles.App}>
       <div className={styles.container}>
         <Header />
+        {linkSuccess || <div>Please link an account to get started.</div>}
         {linkSuccess && (
           <>
             <Products />

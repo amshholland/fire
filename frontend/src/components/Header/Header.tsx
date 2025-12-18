@@ -3,20 +3,12 @@ import Context from '../../context/index.tsx'
 import { useUserAuth } from '../../hooks/useUserAuth.ts'
 import UserSection from './UserSection.tsx'
 import PlaidLink from './PlaidLink.tsx'
-import TokensDisplay from './TokensDisplay.tsx'
 
 const Header = () => {
   const { user, handleLoginSuccess, handleLogout } = useUserAuth()
 
-  const {
-    itemId,
-    accessToken,
-    userToken,
-    linkToken,
-    isItemAccess,
-    backend,
-    linkTokenError
-  } = useContext(Context)
+  const { linkToken, backend, linkTokenError, linkSuccess } =
+    useContext(Context)
 
   return (
     <div>
@@ -26,18 +18,11 @@ const Header = () => {
         onLogout={handleLogout}
       />
 
-      {!accessToken ? (
+      {!linkSuccess && (
         <PlaidLink
           backend={backend}
           linkToken={linkToken}
           linkTokenError={linkTokenError}
-        />
-      ) : (
-        <TokensDisplay
-          itemId={itemId}
-          accessToken={accessToken}
-          userToken={userToken}
-          isItemAccess={isItemAccess}
         />
       )}
     </div>
