@@ -1,24 +1,32 @@
-import React from 'react'
+import React, { useContext, useEffect } from 'react'
 import PlaidLinkButton from '../PlaidLinkButton/PlaidLinkButton.tsx'
-
-interface LinkSectionProps {
-  backend: boolean
-  linkToken: string | null
-  linkTokenError: {
-    error_message: string
-    error_code: string
-    error_type: string
-  }
-}
+import Context from '../../context/plaidContext.tsx'
 
 /**
  * Link token section - displays status and Plaid Link button or errors
  */
-const PlaidLink: React.FC<LinkSectionProps> = ({
-  backend,
-  linkToken,
-  linkTokenError
-}) => {
+const PlaidLink: React.FC = () => {
+  const { backend, linkToken, linkTokenError, accessToken } =
+    useContext(Context)
+
+  useEffect(() => {
+    console.log(
+      'PlaidLink useEffect:' +
+        JSON.stringify({
+          backend,
+          linkToken,
+          linkTokenError,
+          accessToken
+        })
+    )
+  }, [backend, linkToken, linkTokenError, accessToken])
+
+  console.log('PlaidLink render:', {
+    backend,
+    linkToken,
+    linkTokenError,
+    accessToken
+  })
   if (!backend) {
     return (
       <div>
@@ -29,7 +37,13 @@ const PlaidLink: React.FC<LinkSectionProps> = ({
     )
   }
 
-  if (linkToken === null) {
+  if (
+    linkToken === null ||
+    linkToken === '' ||
+    linkTokenError ||
+    accessToken === null ||
+    accessToken === ''
+  ) {
     return (
       <div>
         <div>
@@ -43,6 +57,7 @@ const PlaidLink: React.FC<LinkSectionProps> = ({
           Error Type: <code>{linkTokenError.error_type}</code>
         </div>
         <div>Error Message: {linkTokenError.error_message}</div>
+        <PlaidLinkButton />
       </div>
     )
   }
@@ -51,6 +66,9 @@ const PlaidLink: React.FC<LinkSectionProps> = ({
     return <button disabled>Loading...</button>
   }
 
+  if (accessToken === '' || linkToken === null || accessToken === null) {
+    return <PlaidLinkButton />
+  }
   return <PlaidLinkButton />
 }
 

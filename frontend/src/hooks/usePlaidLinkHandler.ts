@@ -76,11 +76,36 @@ export const usePlaidLinkHandler = () => {
     [dispatch]
   )
 
-  /**
+    /**
    * Handle successful Plaid Link
    */
   const onSuccess = useCallback(
-    (public_token: string) => {
+    async (public_token: string) => {
+      // Verify backend is still in sync before finalizing success state
+      try {
+        const infoResponse = await fetch('/api/info', { method: 'POST' })
+        const infoData = await infoResponse.json()
+        console.log('Backend /info data:', infoData)
+        
+        // If backend doesn't have access token after exchange, server likely restarted
+        if (!infoData.access_token) {
+          dispatch({
+            type: 'SET_STATE',
+            state: {
+              linkSuccess: false,
+              itemId: null,
+              accessToken: null,
+              userToken: null,
+              linkToken: '',
+              isItemAccess: true
+            }
+          })
+          return
+        }
+      } catch (error) {
+        console.error('Failed to verify backend state:', error)
+      }
+
       // Handle different product types
       if (isPaymentInitiation) {
         dispatch({ type: 'SET_STATE', state: { isItemAccess: false } })
@@ -107,10 +132,9 @@ export const usePlaidLinkHandler = () => {
     const restorePlaidState = () => {
       const itemId = localStorage.getItem(STORAGE_KEYS.PLAID_ITEM_ID)
       const accessToken = localStorage.getItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN)
-      const linkSuccess = localStorage.getItem(STORAGE_KEYS.PLAID_LINK_SUCCESS)
 
       // Only restore linkSuccess if we have both itemId and accessToken
-      if (itemId && accessToken && linkSuccess === 'true') {
+      if (itemId && accessToken) {
         dispatch({
           type: 'SET_STATE',
           state: {

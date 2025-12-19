@@ -15,6 +15,7 @@ export const plaidApi = {
     }
     
     const data = await response.json();
+    console.log('link token data:', data);
     return data.link_token;
   },
 

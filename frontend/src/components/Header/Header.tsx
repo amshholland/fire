@@ -7,8 +7,7 @@ import PlaidLink from './PlaidLink.tsx'
 const Header = () => {
   const { user, handleLoginSuccess, handleLogout } = useUserAuth()
 
-  const { linkToken, backend, linkTokenError, linkSuccess } =
-    useContext(Context)
+  const { linkSuccess } = useContext(Context)
 
   return (
     <div>
@@ -18,13 +17,7 @@ const Header = () => {
         onLogout={handleLogout}
       />
 
-      {!linkSuccess && (
-        <PlaidLink
-          backend={backend}
-          linkToken={linkToken}
-          linkTokenError={linkTokenError}
-        />
-      )}
+      {!linkSuccess && <PlaidLink />}
     </div>
   )
 }

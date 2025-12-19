@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { state } from '../state/store.js';
-import { config } from '../config/env.js';
+import { state } from '../state/store';
+import { config } from '../config/env';
 
 export const infoRouter = Router();
 infoRouter.post('/info', (_req, res) => {

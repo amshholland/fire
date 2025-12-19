@@ -20,7 +20,7 @@ interface QuickstartState {
   }
 }
 
-const initialState: QuickstartState = {
+export const initialState: QuickstartState = {
   linkSuccess: false,
   isItemAccess: true,
   isPaymentInitiation: false,

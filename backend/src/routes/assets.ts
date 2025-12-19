@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { plaidClient } from '../clients/plaidClient.js';
-import { state } from '../state/store.js';
-import { prettyPrint } from '../utils/logger.js';
-import { pollWithRetries } from '../utils/poll.js';
+import { plaidClient } from '../clients/plaidClient';
+import { state } from '../state/store';
+import { prettyPrint } from '../utils/logger';
+import { pollWithRetries } from '../utils/poll';
 
 export const assetsRouter = Router();
 
