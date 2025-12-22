@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
+import Context from '../context/index.tsx'
 
 /**
  * Custom hook for managing user authentication with persistence
@@ -7,6 +8,7 @@ import { STORAGE_KEYS } from '../config/storageConfig.ts'
 export const useUserAuth = () => {
   const [user, setUser] = useState<any>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const { dispatch } = useContext(Context)
 
   /**
    * Load user from localStorage on component mount
@@ -35,11 +37,17 @@ export const useUserAuth = () => {
 
   /**
    * Handle logout and clear user data
+   * Resets both user state and Plaid link state
    */
   const handleLogout = useCallback(() => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEYS.GOOGLE_USER)
-  }, [])
+    // Reset Plaid link state when logging out
+    dispatch({
+      type: 'SET_STATE',
+      state: { linkSuccess: false }
+    })
+  }, [dispatch])
 
   return { user, handleLoginSuccess, handleLogout, isInitialized }
 }
