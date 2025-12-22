@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { plaidClient } from '../clients/plaidClient.js';
-import { sleep } from '../utils/time.js';
-import { prettyPrint } from '../utils/logger.js';
+import { plaidClient } from '../clients/plaidClient';
+import { sleep } from '../utils/time';
+import { prettyPrint } from '../utils/logger';
 
 export const transactionsRouter = Router();
 

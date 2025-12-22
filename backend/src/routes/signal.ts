@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { plaidClient } from '../clients/plaidClient.js';
-import { state } from '../state/store.js';
-import { prettyPrint } from '../utils/logger.js';
-import { config } from '../config/env.js';
+import { plaidClient } from '../clients/plaidClient';
+import { state } from '../state/store';
+import { prettyPrint } from '../utils/logger';
+import { config } from '../config/env';
 
 export const signalRouter = Router();
 

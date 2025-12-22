@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { prettyPrint } from './logger.js';
+import { prettyPrint } from './logger';
 
 export const apiErrorFormatter = (error: any) => {
   const status = error?.status || 500;

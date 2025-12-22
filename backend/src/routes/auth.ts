@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { plaidClient } from '../clients/plaidClient.js';
-import { state } from '../state/store.js';
-import { prettyPrint } from '../utils/logger.js';
+import { plaidClient } from '../clients/plaidClient';
+import { state } from '../state/store';
+import { prettyPrint } from '../utils/logger';
 
 export const authRouter = Router();
 authRouter.get('/auth', async (_req, res, next) => {
