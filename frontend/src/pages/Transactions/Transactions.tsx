@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useContext, useCallback } from 'react'
 import { Table, Button, message, Spin } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
 import Context from '../../context/index.tsx'
 
-interface DataType {
+interface Transaction {
   transaction_id: string
   merchant_name?: string
   name?: string
@@ -12,59 +12,74 @@ interface DataType {
   category?: string[]
 }
 
-const Transactions: React.FC = () => {
-  const [dataSource, setDataSource] = useState<DataType[]>([])
-  const [loading, setLoading] = useState(false)
+interface TransactionsResponse {
+  latest_transactions?: Transaction[]
+  transactions?: Transaction[]
+  error?: string
+}
 
+/**
+ * Fetches transactions from the backend API
+ */
+const fetchTransactionsData = async (
+  accessToken: string
+): Promise<Transaction[]> => {
+  if (!accessToken) {
+    throw new Error(
+      'Access token not available. Please link your account first.'
+    )
+  }
+
+  const params = new URLSearchParams({ access_token: accessToken })
+  const response = await fetch(`/api/transactions?${params}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch transactions')
+  }
+
+  const data: TransactionsResponse = await response.json()
+  return data.latest_transactions || data.transactions || []
+}
+
+const Transactions: React.FC = () => {
+  const [dataSource, setDataSource] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(false)
   const { accessToken } = useContext(Context)
 
-  const fetchTransactions = async () => {
-    if (!accessToken) {
-      message.error(
-        'Access token not available. Please link your account first.'
-      )
-      return
-    }
-
+  const handleFetchTransactions = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ access_token: accessToken })
-      const response = await fetch(`/api/transactions?${params}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch transactions')
-      }
-
-      const data = await response.json()
-      const transactions = data.latest_transactions || data.transactions || []
+      const transactions = await fetchTransactionsData(accessToken!)
       setDataSource(transactions)
       message.success(`Fetched ${transactions.length} transactions`)
     } catch (error) {
-      message.error('Error fetching transactions: ' + (error as Error).message)
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error'
+      message.error(errorMessage)
     } finally {
       setLoading(false)
     }
-  }
+  }, [accessToken])
 
   useEffect(() => {
-    fetchTransactions()
-  }, [])
+    handleFetchTransactions()
+  }, [handleFetchTransactions])
 
-  const columns: ColumnsType<DataType> = [
+  const columns: ColumnsType<Transaction> = [
     {
       title: 'Merchant Name',
       dataIndex: 'merchant_name',
       key: 'merchant_name',
-      render: (text, record) => text || record.name || 'N/A'
+      render: (_text, record) => record.merchant_name || record.name || 'N/A'
     },
     {
       title: 'Amount',
       dataIndex: 'amount',
       key: 'amount',
-      render: (amount) => `$${Math.abs(amount).toFixed(2)}`
+      render: (amount: number) => `$${Math.abs(amount).toFixed(2)}`
     },
     {
       title: 'Date',
@@ -75,7 +90,7 @@ const Transactions: React.FC = () => {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
-      render: (category) =>
+      render: (category: string[] | string | undefined) =>
         Array.isArray(category) ? category.join(', ') : category || 'N/A'
     }
   ]
@@ -85,14 +100,14 @@ const Transactions: React.FC = () => {
       <h1>Transactions</h1>
       <Button
         type="primary"
-        onClick={fetchTransactions}
+        onClick={handleFetchTransactions}
         loading={loading}
         style={{ marginBottom: '16px' }}
       >
         Refresh Transactions
       </Button>
       <Spin spinning={loading}>
-        <Table
+        <Table<Transaction>
           dataSource={dataSource}
           columns={columns}
           pagination={false}
