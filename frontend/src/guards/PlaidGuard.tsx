@@ -1,5 +1,5 @@
 import React, { ReactNode, useContext } from 'react'
-import Context from '../context/index.tsx'
+import Context from '../context/plaidContext.tsx'
 import SetupPage from '../pages/SetupPage/SetupPage.tsx'
 
 interface PlaidGuardProps {

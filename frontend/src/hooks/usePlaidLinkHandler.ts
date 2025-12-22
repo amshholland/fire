@@ -1,6 +1,6 @@
 import { useContext, useCallback, useEffect, useState } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
-import Context from '../context/index.tsx'
+import Context from '../context/plaidContext.tsx'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
 
 /**

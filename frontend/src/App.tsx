@@ -1,7 +1,8 @@
 import { useEffect, useContext } from 'react'
 
 import Header from './components/Header/Header.tsx'
-import Context from './context/index.tsx'
+import { LoadingView } from './components/LoadingView.tsx'
+import Context from './context/plaidContext.tsx'
 import { useAppInitialization } from './hooks/useAppInitialization.ts'
 import { useUserAuth } from './hooks/useUserAuth.ts'
 import AuthGuard from './guards/AuthGuard.tsx'
@@ -23,11 +24,7 @@ const App = () => {
 
   // Wait for auth to load before rendering
   if (!isInitialized) {
-    return (
-      <div className={styles.App}>
-        <div className={styles.container}>Loading...</div>
-      </div>
-    )
+    return <LoadingView />
   }
 
   return (

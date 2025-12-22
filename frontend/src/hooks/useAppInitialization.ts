@@ -1,6 +1,6 @@
 import { useContext, useCallback } from 'react'
 import { Dispatch } from 'react'
-import Context from '../context/index.tsx'
+import Context from '../context/plaidContext.tsx'
 import { API_ENDPOINTS } from '../config/apiConfig.ts'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
 import { isOAuthRedirect } from '../utils/oauthUtils.ts'

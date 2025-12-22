@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
-import { QuickstartProvider } from './context/index.tsx'
+import { QuickstartProvider } from './context/plaidContext.tsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
 const rootElement = document.getElementById('root');

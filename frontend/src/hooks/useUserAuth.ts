@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useContext } from 'react'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
-import Context from '../context/index.tsx'
+import Context from '../context/plaidContext.tsx'
 
 /**
  * Custom hook for managing user authentication with persistence

@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import Context from '../../context/index.tsx'
+import Context from '../../context/plaidContext.tsx'
 import PlaidLink from '../../components/Header/PlaidLink.tsx'
 import './SetupPage.css'
 

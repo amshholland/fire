@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import Context from '../context/index.tsx'
+import Context from '../context/plaidContext.tsx'
 import { useUserAuth } from './useUserAuth.ts'
 
 type AppState = 'loading' | 'unauthenticated' | 'google_authenticated' | 'authenticated'
