@@ -77,6 +77,14 @@ export const usePlaidLinkHandler = () => {
   )
 
   /**
+   * Handle user exiting Plaid Link without completing
+   */
+  const onExit = useCallback(() => {
+    console.log('User exited Plaid Link flow')
+    // User can retry - don't clear state
+  }, [])
+
+  /**
    * Handle successful Plaid Link
    */
   const onSuccess = useCallback(
@@ -128,7 +136,8 @@ export const usePlaidLinkHandler = () => {
 
   const config: Parameters<typeof usePlaidLink>[0] = {
     token: linkToken!,
-    onSuccess
+    onSuccess,
+    onExit
   }
 
   if (isOauth) {

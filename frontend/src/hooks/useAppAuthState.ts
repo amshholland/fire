@@ -2,13 +2,18 @@ import { useContext } from 'react'
 import Context from '../context/plaidContext.tsx'
 import { useUserAuth } from './useUserAuth.ts'
 
-type AppState = 'loading' | 'unauthenticated' | 'google_authenticated' | 'authenticated'
+type AppState = 'loading' | 'unauthenticated' | 'google_authenticated' | 'plaid_pending' | 'plaid_error' | 'authenticated'
 
 interface AppAuthState {
   state: AppState
   user: any
   isInitialized: boolean
   linkSuccess: boolean
+  linkTokenError?: {
+    error_message: string
+    error_code: string
+    error_type: string
+  }
 }
 
 /**
@@ -17,11 +22,13 @@ interface AppAuthState {
  * States:
  * - loading: Initial state while auth is being initialized
  * - unauthenticated: No Google authentication
- * - google_authenticated: Google authenticated but Plaid not linked
+ * - google_authenticated: Google authenticated, Plaid not started
+ * - plaid_pending: Plaid link token loaded, awaiting user action
+ * - plaid_error: Plaid link token failed to load
  * - authenticated: Both Google authenticated and Plaid linked
  */
 export const useAppAuthState = (): AppAuthState => {
-  const { linkSuccess } = useContext(Context)
+  const { linkSuccess, linkToken, linkTokenError } = useContext(Context)
   const { user, isInitialized } = useUserAuth()
 
   let state: AppState = 'loading'
@@ -29,10 +36,14 @@ export const useAppAuthState = (): AppAuthState => {
   if (isInitialized) {
     if (!user) {
       state = 'unauthenticated'
-    } else if (!linkSuccess) {
-      state = 'google_authenticated'
-    } else {
+    } else if (linkSuccess) {
       state = 'authenticated'
+    } else if (linkTokenError?.error_message) {
+      state = 'plaid_error'
+    } else if (linkToken) {
+      state = 'plaid_pending'
+    } else {
+      state = 'google_authenticated'
     }
   }
 
@@ -40,6 +51,7 @@ export const useAppAuthState = (): AppAuthState => {
     state,
     user,
     isInitialized,
-    linkSuccess
+    linkSuccess,
+    linkTokenError
   }
 }
