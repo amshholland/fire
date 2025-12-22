@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import moment from 'moment';
 import { plaidClient } from '../clients/plaidClient';
-import { PLAID_PRODUCTS, PLAID_COUNTRY_CODES, PLAID_REDIRECT_URI, PLAID_ANDROID_PACKAGE_NAME } from '../config';
+import { config } from '../config/env';
 import { Products, CountryCode, LinkTokenCreateRequest, LinkTokenCreateResponse } from 'plaid'; 
 import { apiErrorFormatter } from '../utils/errors';
 
@@ -11,7 +11,7 @@ router.post('/info', (_req: Request, res: Response) => {
   res.json({
     item_id: null,
     access_token: null,
-    products: PLAID_PRODUCTS,
+    products: config.PLAID_PRODUCTS,
   });
 });
 
@@ -22,20 +22,20 @@ router.post('/create_link_token', async (_req: Request, res: Response, next: Nex
         client_user_id: 'user-id',
       },
       client_name: 'Plaid Quickstart',
-      products: PLAID_PRODUCTS,
-      country_codes: PLAID_COUNTRY_CODES as CountryCode[],
+      products: config.PLAID_PRODUCTS as Products[],
+      country_codes: config.PLAID_COUNTRY_CODES as CountryCode[],
       language: 'en',
     };
 
-    if (PLAID_REDIRECT_URI) {
-      configs.redirect_uri = PLAID_REDIRECT_URI;
+    if (config.PLAID_REDIRECT_URI) {
+      configs.redirect_uri = config.PLAID_REDIRECT_URI;
     }
 
-    if (PLAID_ANDROID_PACKAGE_NAME) {
-      configs.android_package_name = PLAID_ANDROID_PACKAGE_NAME;
+    if (config.PLAID_ANDROID_PACKAGE_NAME) {
+      configs.android_package_name = config.PLAID_ANDROID_PACKAGE_NAME;
     }
 
-    if (PLAID_PRODUCTS.includes(Products.Statements)) {
+    if (config.PLAID_PRODUCTS.includes(Products.Statements)) {
       configs.statements = {
         end_date: moment().format('YYYY-MM-DD'),
         start_date: moment().subtract(30, 'days').format('YYYY-MM-DD'),
@@ -58,12 +58,12 @@ router.post('/create_link_token_for_payment', async (_req: Request, res: Respons
       },
       client_name: 'Plaid Quickstart',
       products: [Products.PaymentInitiation],
-      country_codes: PLAID_COUNTRY_CODES as CountryCode[],
+      country_codes: config.PLAID_COUNTRY_CODES as CountryCode[],
       language: 'en',
     };
 
-    if (PLAID_REDIRECT_URI) {
-      configs.redirect_uri = PLAID_REDIRECT_URI;
+    if (config.PLAID_REDIRECT_URI) {
+      configs.redirect_uri = config.PLAID_REDIRECT_URI;
     }
 
     const createTokenResponse: LinkTokenCreateResponse = (await plaidClient.linkTokenCreate(configs)).data;
