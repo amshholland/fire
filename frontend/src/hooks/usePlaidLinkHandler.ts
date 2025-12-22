@@ -107,6 +107,7 @@ export const usePlaidLinkHandler = () => {
     const restorePlaidState = () => {
       const itemId = localStorage.getItem(STORAGE_KEYS.PLAID_ITEM_ID)
       const accessToken = localStorage.getItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN)
+      console.log('Restoring Plaid state from localStorage:', { itemId, accessToken })
       const linkSuccess = localStorage.getItem(STORAGE_KEYS.PLAID_LINK_SUCCESS)
 
       if (itemId && accessToken && linkSuccess === 'true') {

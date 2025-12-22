@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { Table, Button, message, Spin } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
+import Context from '../../context/index.tsx'
 
 interface DataType {
   transaction_id: string
@@ -15,10 +16,20 @@ const Transactions: React.FC = () => {
   const [dataSource, setDataSource] = useState<DataType[]>([])
   const [loading, setLoading] = useState(false)
 
+  const { accessToken } = useContext(Context)
+
   const fetchTransactions = async () => {
+    if (!accessToken) {
+      message.error(
+        'Access token not available. Please link your account first.'
+      )
+      return
+    }
+
     setLoading(true)
     try {
-      const response = await fetch('/api/transactions', {
+      const params = new URLSearchParams({ access_token: accessToken })
+      const response = await fetch(`/api/transactions?${params}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       })

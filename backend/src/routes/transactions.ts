@@ -1,13 +1,18 @@
 import { Router } from 'express';
 import { plaidClient } from '../clients/plaidClient.js';
-import { state } from '../state/store.js';
 import { sleep } from '../utils/time.js';
 import { prettyPrint } from '../utils/logger.js';
 
 export const transactionsRouter = Router();
 
-transactionsRouter.get('/transactions', async (_req, res, next) => {
+transactionsRouter.get('/transactions', async (req, res, next) => {
   try {
+    const accessToken = req.query.access_token as string
+    
+    if (!accessToken) {
+      return res.status(400).json({ error: 'access_token is required' })
+    }
+
     let cursor: string | null = null;
     let added: any[] = [];
     let modified: any[] = [];
@@ -15,7 +20,9 @@ transactionsRouter.get('/transactions', async (_req, res, next) => {
     let hasMore = true;
 
     while (hasMore) {
-      const response = await plaidClient.transactionsSync({ access_token: state.ACCESS_TOKEN!});
+      const response = await plaidClient.transactionsSync({ access_token: accessToken });
+
+      console.log('Fetched transactions page:', accessToken);
       const data = response.data;
       cursor = data.next_cursor;
       if (cursor === '') {
