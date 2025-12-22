@@ -1,39 +1,31 @@
 import { useContext } from 'react'
 import Context from '../../context/index.tsx'
-import { useUserAuth } from '../../hooks/useUserAuth.ts'
 import UserSection from './UserSection.tsx'
-import PlaidLink from './PlaidLink.tsx'
 import TokensDisplay from './TokensDisplay.tsx'
+import styles from './Header.module.css'
 
-const Header = () => {
-  const { user, handleLoginSuccess, handleLogout } = useUserAuth()
+interface HeaderProps {
+  user: any
+  onLoginSuccess: (userData: any) => void
+  onLogout: () => void
+}
 
-  const {
-    itemId,
-    accessToken,
-    userToken,
-    linkToken,
-    linkSuccess,
-    isItemAccess,
-    backend,
-    linkTokenError
-  } = useContext(Context)
+const Header = ({ user, onLoginSuccess, onLogout }: HeaderProps) => {
+  const { itemId, accessToken, userToken, linkSuccess, isItemAccess } =
+    useContext(Context)
 
   return (
-    <div>
-      <UserSection
-        user={user}
-        onLoginSuccess={handleLoginSuccess}
-        onLogout={handleLogout}
-      />
-
-      {!linkSuccess ? (
-        <PlaidLink
-          backend={backend}
-          linkToken={linkToken}
-          linkTokenError={linkTokenError}
+    <div className={styles.header}>
+      <div className={styles.headerTop}>
+        <div className={styles.logo}>Fire</div>
+        <UserSection
+          user={user}
+          onLoginSuccess={onLoginSuccess}
+          onLogout={onLogout}
         />
-      ) : (
+      </div>
+
+      {linkSuccess && (
         <TokensDisplay
           itemId={itemId}
           accessToken={accessToken}

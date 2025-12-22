@@ -1,12 +1,12 @@
 import React from 'react';
 import './Dashboard.css'
-import PlaidLinkButton from '../../components/PlaidLinkButton/PlaidLinkButton.tsx'
+import Products from '../../components/ProductTypes/Products.tsx'
 import Transactions from '../Transactions/Transactions.tsx'
 
 const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
-      <PlaidLinkButton />
+      <Products />
       <Transactions />
     </div>
   )
