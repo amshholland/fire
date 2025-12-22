@@ -61,6 +61,8 @@ export const usePlaidLinkHandler = () => {
         // Persist Plaid credentials
         localStorage.setItem(STORAGE_KEYS.PLAID_ITEM_ID, data.item_id)
         localStorage.setItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN, data.access_token)
+        localStorage.setItem(STORAGE_KEYS.PLAID_LINK_SUCCESS, 'true')
+        localStorage.setItem(STORAGE_KEYS.LINK_TOKEN, linkToken || '')
       } catch (error) {
         console.error('Failed to exchange public token:', error)
         dispatch({
@@ -73,7 +75,7 @@ export const usePlaidLinkHandler = () => {
         })
       }
     },
-    [dispatch]
+    [dispatch, linkToken]
   )
 
     /**
@@ -132,7 +134,7 @@ export const usePlaidLinkHandler = () => {
     const restorePlaidState = () => {
       const itemId = localStorage.getItem(STORAGE_KEYS.PLAID_ITEM_ID)
       const accessToken = localStorage.getItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN)
-
+      
       // Only restore linkSuccess if we have both itemId and accessToken
       if (itemId && accessToken) {
         dispatch({

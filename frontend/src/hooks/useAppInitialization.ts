@@ -21,10 +21,27 @@ export const useFetchProductInfo = () => {
       }
 
       const data = await response.json()
+      console.log('Fetched product info:', data)
       
       // Detect server restart: if frontend has accessToken but backend's state is empty, server restarted
-      if (!data.access_token) {
-        dispatch({ type: 'SET_STATE', state: { accessToken: null, linkSuccess: false, itemId: null } })
+      if (!data.access_token || data.access_token === null) {
+        // Clear all Plaid credentials from both state and storage
+        dispatch({
+          type: 'SET_STATE',
+          state: {
+            accessToken: null,
+            linkSuccess: false,
+            itemId: null,
+            userToken: null,
+            linkToken: '' // Also clear stale link token
+          }
+        })
+        // Clear localStorage to match backend reset
+        localStorage.removeItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN)
+        localStorage.removeItem(STORAGE_KEYS.PLAID_ITEM_ID)
+        localStorage.removeItem(STORAGE_KEYS.PLAID_LINK_SUCCESS)
+        localStorage.removeItem(STORAGE_KEYS.LINK_TOKEN)
+        localStorage.removeItem(STORAGE_KEYS.PLAID_LINK_SUCCESS)
       }
       
       const paymentInitiation = data.products.includes('payment_initiation')

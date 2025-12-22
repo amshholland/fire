@@ -77,7 +77,12 @@ const Transactions: React.FC = () => {
     }
   ]
 
-  if (!accessToken) {
+  if (
+    !accessToken ||
+    accessToken === '' ||
+    linkToken === null ||
+    linkToken === ''
+  ) {
     return (
       <div>
         <h1>Transactions</h1>
