@@ -14,11 +14,7 @@ interface LinkSectionProps {
 /**
  * Link token section - displays status and Plaid Link button or errors
  */
-const PlaidLink: React.FC<LinkSectionProps> = ({
-  backend,
-  linkToken,
-  linkTokenError
-}) => {
+const PlaidLink: React.FC<LinkSectionProps> = ({ backend, linkToken }) => {
   if (!backend) {
     return (
       <div>
@@ -30,21 +26,7 @@ const PlaidLink: React.FC<LinkSectionProps> = ({
   }
 
   if (linkToken == null) {
-    return (
-      <div>
-        <div>
-          Unable to fetch link_token: please make sure your backend server is
-          running and that your .env file has been configured correctly.
-        </div>
-        <div>
-          Error Code: <code>{linkTokenError.error_code}</code>
-        </div>
-        <div>
-          Error Type: <code>{linkTokenError.error_type}</code>
-        </div>
-        <div>Error Message: {linkTokenError.error_message}</div>
-      </div>
-    )
+    return <PlaidLinkButton />
   }
 
   if (linkToken === '') {

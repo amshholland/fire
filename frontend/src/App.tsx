@@ -12,12 +12,24 @@ import styles from './App.css'
 
 const App = () => {
   const { linkSuccess } = useContext(Context)
-  const { user, handleLoginSuccess, handleLogout } = useUserAuth()
+  const { user, handleLoginSuccess, handleLogout, isInitialized } =
+    useUserAuth()
   const initializeApp = useAppInitialization()
 
   useEffect(() => {
-    initializeApp()
-  }, [initializeApp])
+    if (isInitialized) {
+      initializeApp()
+    }
+  }, [initializeApp, isInitialized])
+
+  // Wait for auth to load before rendering
+  if (!isInitialized) {
+    return (
+      <div className={styles.App}>
+        <div className={styles.container}>Loading...</div>
+      </div>
+    )
+  }
 
   if (!user) {
     return <LandingPage onLoginSuccess={handleLoginSuccess} />

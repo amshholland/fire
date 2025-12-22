@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from '../config/storageConfig.ts'
  */
 export const useUserAuth = () => {
   const [user, setUser] = useState<any>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   /**
    * Load user from localStorage on component mount
@@ -20,6 +21,7 @@ export const useUserAuth = () => {
         localStorage.removeItem(STORAGE_KEYS.GOOGLE_USER)
       }
     }
+    setIsInitialized(true)
   }, [])
 
   /**
@@ -39,5 +41,5 @@ export const useUserAuth = () => {
     localStorage.removeItem(STORAGE_KEYS.GOOGLE_USER)
   }, [])
 
-  return { user, handleLoginSuccess, handleLogout }
+  return { user, handleLoginSuccess, handleLogout, isInitialized }
 }

@@ -1,8 +1,5 @@
-import { useContext } from 'react'
-import Context from '../../context/index.tsx'
 import UserSection from './UserSection.tsx'
-import TokensDisplay from './TokensDisplay.tsx'
-import styles from './Header.module.css'
+import styles from './Header.css'
 
 interface HeaderProps {
   user: any
@@ -11,28 +8,14 @@ interface HeaderProps {
 }
 
 const Header = ({ user, onLoginSuccess, onLogout }: HeaderProps) => {
-  const { itemId, accessToken, userToken, linkSuccess, isItemAccess } =
-    useContext(Context)
-
   return (
     <div className={styles.header}>
-      <div className={styles.headerTop}>
-        <div className={styles.logo}>Fire</div>
-        <UserSection
-          user={user}
-          onLoginSuccess={onLoginSuccess}
-          onLogout={onLogout}
-        />
-      </div>
-
-      {linkSuccess && (
-        <TokensDisplay
-          itemId={itemId}
-          accessToken={accessToken}
-          userToken={userToken}
-          isItemAccess={isItemAccess}
-        />
-      )}
+      <div className={styles.logo}>Fire</div>
+      <UserSection
+        user={user}
+        onLoginSuccess={onLoginSuccess}
+        onLogout={onLogout}
+      />
     </div>
   )
 }
