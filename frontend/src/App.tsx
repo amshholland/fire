@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 
 import Header from './components/Header/Header.tsx'
 import Products from './components/ProductTypes/Products.tsx'
-import Items from './components/ProductTypes/Items.tsx'
 import { useContext } from 'react'
 import Context from './context/index.tsx'
 import Transactions from './pages/Transactions/Transactions.tsx'
@@ -11,7 +10,7 @@ import { useAppInitialization } from './hooks/useAppInitialization.ts'
 import styles from './App.css'
 
 const App = () => {
-  const { linkSuccess, isPaymentInitiation, itemId } = useContext(Context)
+  const { linkSuccess } = useContext(Context)
   const initializeApp = useAppInitialization()
 
   useEffect(() => {
@@ -25,7 +24,6 @@ const App = () => {
         {linkSuccess && (
           <>
             <Products />
-            {!isPaymentInitiation && itemId && <Items />}
             <Transactions />
           </>
         )}
