@@ -2,6 +2,7 @@ import { useContext, useCallback, useEffect, useState } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
 import Context from '../context/plaidContext.tsx'
 import { STORAGE_KEYS } from '../config/storageConfig.ts'
+import { usePlaidSync } from './usePlaidSync.ts'
 
 /**
  * Custom hook for managing Plaid Link with persistence
@@ -14,6 +15,7 @@ export const usePlaidLinkHandler = () => {
     dispatch
   } = useContext(Context)
   const [isOauth, setIsOauth] = useState(false)
+  const { syncPlaidData } = usePlaidSync()
 
   /**
    * Check if returning from OAuth redirect
@@ -88,7 +90,7 @@ export const usePlaidLinkHandler = () => {
    * Handle successful Plaid Link
    */
   const onSuccess = useCallback(
-    (public_token: string) => {
+    async (public_token: string) => {
       // Handle different product types
       if (isPaymentInitiation) {
         dispatch({ type: 'SET_STATE', state: { isItemAccess: false } })
@@ -97,15 +99,25 @@ export const usePlaidLinkHandler = () => {
         dispatch({ type: 'SET_STATE', state: { isItemAccess: false } })
       } else {
         // Exchange token for access credentials
-        exchangePublicTokenForAccessToken(public_token)
+        await exchangePublicTokenForAccessToken(public_token)
       }
 
       // Mark link as successful and persist
       dispatch({ type: 'SET_STATE', state: { linkSuccess: true } })
       localStorage.setItem(STORAGE_KEYS.PLAID_LINK_SUCCESS, 'true')
+      
+      // Sync Plaid data to our database
+      console.log('Starting Plaid data sync...')
+      const syncSuccess = await syncPlaidData()
+      if (syncSuccess) {
+        console.log('Plaid data synced successfully')
+      } else {
+        console.error('Failed to sync Plaid data')
+      }
+      
       window.history.pushState('', '', '/')
     },
-    [dispatch, isPaymentInitiation, isCraProductsExclusively, exchangePublicTokenForAccessToken]
+    [dispatch, isPaymentInitiation, isCraProductsExclusively, exchangePublicTokenForAccessToken, syncPlaidData]
   )
 
   /**

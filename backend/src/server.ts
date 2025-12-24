@@ -29,6 +29,7 @@ import { userTransactionsRouter } from './routes/user-transactions';
 import { categoriesRouter } from './routes/user-categories';
 import { budgetsRouter } from './routes/user-budgets';
 import { netWorthRouter } from './routes/user-net-worth';
+import { plaidDataRouter } from './routes/plaid-data';
 import { debugRouter } from './routes/debug';
 
 // Initialize database on startup
@@ -70,6 +71,7 @@ app.use('/api', userTransactionsRouter);
 app.use('/api', categoriesRouter);
 app.use('/api', budgetsRouter);
 app.use('/api', netWorthRouter);
+app.use('/api', plaidDataRouter);
 
 // Debug routes (remove in production)
 app.use('/api', debugRouter);

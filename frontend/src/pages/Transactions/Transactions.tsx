@@ -50,9 +50,16 @@ const Transactions: React.FC = () => {
   const { accessToken } = useContext(Context)
 
   const handleFetchTransactions = useCallback(async () => {
+    if (!accessToken) {
+      message.error(
+        'Access token not available. Please link your account first.'
+      )
+      return
+    }
+
     setLoading(true)
     try {
-      const transactions = await fetchTransactionsData(accessToken!)
+      const transactions = await fetchTransactionsData(accessToken)
       setDataSource(transactions)
       message.success(`Fetched ${transactions.length} transactions`)
     } catch (error) {
@@ -64,9 +71,12 @@ const Transactions: React.FC = () => {
     }
   }, [accessToken])
 
+  // Fetch transactions on mount or when accessToken changes
   useEffect(() => {
-    handleFetchTransactions()
-  }, [handleFetchTransactions])
+    if (accessToken) {
+      handleFetchTransactions()
+    }
+  }, [accessToken, handleFetchTransactions])
 
   const columns: ColumnsType<Transaction> = [
     {

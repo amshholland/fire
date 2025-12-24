@@ -4,9 +4,10 @@ import { state } from '../state/store';
 import { prettyPrint } from '../utils/logger';
 
 export const accountsRouter = Router();
-accountsRouter.get('/accounts', async (_req, res, next) => {
+accountsRouter.get('/accounts', async (req, res, next) => {
   try {
-    const r = await plaidClient.accountsGet({ access_token: state.ACCESS_TOKEN! });
+    const accessToken = req.query.access_token as string || state.ACCESS_TOKEN!;
+    const r = await plaidClient.accountsGet({ access_token: accessToken });
     prettyPrint(r.data);
     res.json(r.data);
   } catch (e) {
