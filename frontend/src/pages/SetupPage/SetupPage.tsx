@@ -1,30 +1,11 @@
-import React, { useContext, useCallback } from 'react'
 import { Alert, Spin } from 'antd'
 import Context from '../../context/plaidContext.tsx'
 import PlaidLink from '../../components/Header/PlaidLink.tsx'
 import './SetupPage.css'
+import { useContext } from 'react'
 
 const SetupPage: React.FC = () => {
-  const { backend, linkToken, linkTokenError, dispatch } = useContext(Context)
-
-  /**
-   * Retry setup by regenerating link token
-   */
-  const handleRetrySetup = useCallback(() => {
-    dispatch({
-      type: 'SET_STATE',
-      state: {
-        linkToken: null,
-        linkTokenError: {
-          error_type: '',
-          error_code: '',
-          error_message: ''
-        }
-      }
-    })
-    // Force reload to reinitialize
-    window.location.reload()
-  }, [dispatch])
+  const { backend, linkToken, linkTokenError } = useContext(Context)
 
   return (
     <div className="setup-page">
@@ -57,7 +38,14 @@ const SetupPage: React.FC = () => {
       )}
 
       {!linkToken && !linkTokenError?.error_message && (
-        <Spin tip="Loading..." style={{ marginBottom: '1rem' }} />
+        <>
+          <Spin tip="Loading..." style={{ marginBottom: '1rem' }} />
+          <PlaidLink
+            backend={backend}
+            linkToken={linkToken || ''}
+            linkTokenError={linkTokenError}
+          />
+        </>
       )}
 
       {linkToken && (
@@ -67,7 +55,7 @@ const SetupPage: React.FC = () => {
             linkToken={linkToken}
             linkTokenError={linkTokenError}
           />
-          <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '1rem' }}>
+          <p>
             💡 Tip: If you exit the bank connection flow, you can restart it at
             any time.
           </p>

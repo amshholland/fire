@@ -47,6 +47,9 @@ export const useAppAuthState = (): AppAuthState => {
     }
   }
 
+  // DEBUG
+  console.log('🔍 useAppAuthState:', { state, user: user?.email, isInitialized, linkSuccess, linkToken: !!linkToken, linkTokenError: !!linkTokenError })
+
   return {
     state,
     user,
