@@ -9,6 +9,12 @@ interface Transaction {
   merchant?: string | null
   amount: number
   date?: string
+  // Plaid category data (immutable, stored verbatim)
+  plaid_category_primary?: string | null
+  plaid_category_detailed?: string | null
+  plaid_category_confidence?: number | null
+  // App category (authoritative for budgets/reports)
+  category_id?: number | null
   category_name?: string | null
 }
 
@@ -136,10 +142,25 @@ const Transactions: React.FC = () => {
       key: 'date'
     },
     {
-      title: 'Category',
+      title: 'Plaid Category',
+      dataIndex: 'plaid_category_primary',
+      key: 'plaid_category',
+      render: (primary: string | null | undefined, record: Transaction) => {
+        if (primary) {
+          const confidence = record.plaid_category_confidence
+            ? ` (${(record.plaid_category_confidence * 100).toFixed(0)}%)`
+            : ''
+          return `${primary}${confidence}`
+        }
+        return 'N/A'
+      }
+    },
+    {
+      title: 'App Category',
       dataIndex: 'category_name',
       key: 'category_name',
-      render: (categoryName: string | null | undefined) => categoryName || 'N/A'
+      render: (categoryName: string | null | undefined) =>
+        categoryName || 'Uncategorized'
     }
   ]
 

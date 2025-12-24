@@ -45,9 +45,9 @@ export function initializeDatabase(): Database.Database {
   db.exec(CREATE_ASSET_LIABILITY_TABLE);
   db.exec(CREATE_INDEXES);
 
-  // Seed system categories
+  // Seed system categories (global, account_id = NULL)
   const insertCategory = db.prepare(
-    'INSERT INTO categories (name, is_system, user_id) VALUES (?, 1, NULL)'
+    'INSERT INTO categories (name, is_system, account_id) VALUES (?, 1, NULL)'
   );
 
   for (const categoryName of SYSTEM_CATEGORIES) {

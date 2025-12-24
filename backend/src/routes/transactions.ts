@@ -147,10 +147,15 @@ transactionsRouter.post('/user/:userId/transactions/sync', async (req, res, next
         }
       }
 
-      // Save new transactions to database
+      // Save new transactions to database with Plaid category data
       for (const tx of pageAdded) {
         if (tx.account_id === account.plaid_account_id) {
           try {
+            // Extract Plaid category data (stored verbatim, immutable)
+            const plaidCategoryPrimary = tx.personal_finance_category?.primary || null;
+            const plaidCategoryDetailed = tx.personal_finance_category?.detailed || null;
+            const plaidCategoryConfidence = tx.personal_finance_category?.confidence_level || null;
+            
             createTransaction({
               user_id: userId,
               account_id: account.id,
@@ -158,10 +163,16 @@ transactionsRouter.post('/user/:userId/transactions/sync', async (req, res, next
               date: tx.date,
               amount: tx.amount,
               merchant: tx.merchant_name || null,
+              // Store Plaid category data verbatim
+              plaid_category_primary: plaidCategoryPrimary,
+              plaid_category_detailed: plaidCategoryDetailed,
+              plaid_category_confidence: plaidCategoryConfidence,
+              // category_id will be assigned later (defaults to null)
               is_manual: false
             });
             totalAdded++;
           } catch (error: any) {
+            // Skip if duplicate (UNIQUE constraint on plaid_transaction_id)
             if (!error.message?.includes('UNIQUE constraint failed')) {
               console.error('[SYNC] Error saving transaction:', error.message);
             }

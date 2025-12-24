@@ -68,8 +68,17 @@ export const CREATE_ACCOUNT_TABLE = `
  * - date: Transaction date
  * - amount: Transaction amount (positive for income, negative for expenses)
  * - merchant: Merchant or transaction description
- * - category_id: Foreign key reference to categories table (nullable if uncategorized)
+ * - plaid_category_primary: Primary Plaid category (immutable, stored verbatim for audit)
+ * - plaid_category_detailed: Detailed Plaid category (immutable, stored verbatim for audit)
+ * - plaid_category_confidence: Plaid's confidence level for categorization (0.0-1.0)
+ * - category_id: Foreign key reference to app categories table (authoritative for budgets/reports)
  * - is_manual: Boolean flag indicating if transaction was manually entered (vs. synced from Plaid)
+ * 
+ * DESIGN NOTES:
+ * - Plaid category fields are immutable inputs stored for reference/debugging
+ * - category_id represents the app's authoritative category used for budgets and reporting
+ * - Users can override category_id per transaction without affecting Plaid data
+ * - This separation enables future rule-based categorization without modifying source data
  */
 export const CREATE_TRANSACTION_TABLE = `
   CREATE TABLE IF NOT EXISTS transactions (
@@ -80,6 +89,9 @@ export const CREATE_TRANSACTION_TABLE = `
     date DATE NOT NULL,
     amount REAL NOT NULL,
     merchant TEXT,
+    plaid_category_primary TEXT,
+    plaid_category_detailed TEXT,
+    plaid_category_confidence REAL,
     category_id INTEGER,
     is_manual INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -91,19 +103,27 @@ export const CREATE_TRANSACTION_TABLE = `
 /**
  * Category Table Schema
  * 
- * Stores transaction categories (both system-defined and user-custom).
+ * Stores transaction categories with support for both system-defined and account-scoped categories.
  * - id: Auto-incrementing primary key
  * - name: Category name (e.g., "Groceries", "Entertainment")
- * - is_system: Boolean flag indicating if this is a system-defined category (cannot be deleted by user)
- * - user_id: Foreign key reference to users table (nullable for system categories, required for user-custom categories)
+ * - is_system: Boolean flag indicating if this is a system-defined category (global, cannot be deleted)
+ * - account_id: Foreign key reference to accounts table (nullable)
+ *   - NULL for system categories (global, available to all accounts)
+ *   - Set for account-scoped categories (apply only to transactions from that account)
+ * 
+ * DESIGN NOTES:
+ * - System categories (is_system=1, account_id=NULL) are global defaults
+ * - Account-scoped categories (is_system=0, account_id=X) allow per-account customization
+ * - Categories are account-scoped, not user-scoped (user may have multiple accounts with different categories)
+ * - This supports future rule-based categorization per account without cross-account conflicts
  */
 export const CREATE_CATEGORY_TABLE = `
   CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     is_system INTEGER DEFAULT 0,
-    user_id TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    account_id INTEGER,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
   )
 `;
 
@@ -117,6 +137,9 @@ export const CREATE_CATEGORY_TABLE = `
  * - month: Budget month (1-12)
  * - year: Budget year
  * - amount: Budgeted amount for this category/month/year
+ * 
+ * NOTE: Budgets reference app categories (both system and account-scoped).
+ * Users can budget for system categories and their account-specific categories.
  */
 export const CREATE_BUDGET_TABLE = `
   CREATE TABLE IF NOT EXISTS budgets (
@@ -168,7 +191,9 @@ export const CREATE_INDEXES = `
   CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
   CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id);
   CREATE INDEX IF NOT EXISTS idx_transactions_plaid_id ON transactions(plaid_transaction_id);
-  CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
+  CREATE INDEX IF NOT EXISTS idx_transactions_plaid_category ON transactions(plaid_category_primary);
+  CREATE INDEX IF NOT EXISTS idx_categories_account_id ON categories(account_id);
+  CREATE INDEX IF NOT EXISTS idx_categories_is_system ON categories(is_system);
   CREATE INDEX IF NOT EXISTS idx_budgets_user_id ON budgets(user_id);
   CREATE INDEX IF NOT EXISTS idx_assets_liabilities_user_id ON assets_liabilities(user_id);
 `;

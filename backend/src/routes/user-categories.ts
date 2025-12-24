@@ -1,15 +1,18 @@
 /**
  * Categories API Routes
  * 
- * Endpoints for managing transaction categories (system and user-custom)
+ * Endpoints for managing transaction categories (system and account-scoped)
+ * 
+ * NOTE: Categories are account-scoped, not user-scoped.
+ * Users can create different categories for each account they own.
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
 import {
   createCategory,
-  getCategoriesForUser,
+  getCategoriesForAccount,
   getSystemCategories,
-  getUserCustomCategories,
+  getAccountCategories,
   updateCategoryName,
   deleteCategory,
   categoryNameExists
@@ -18,13 +21,13 @@ import {
 export const categoriesRouter = Router();
 
 /**
- * GET /api/user/:userId/categories
- * Get all categories available to user (system + custom)
+ * GET /api/accounts/:accountId/categories
+ * Get all categories available for an account (system + account-scoped)
  */
-categoriesRouter.get('/user/:userId/categories', async (req: Request, res: Response, next: NextFunction) => {
+categoriesRouter.get('/accounts/:accountId/categories', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId } = req.params;
-    const categories = getCategoriesForUser(userId);
+    const { accountId } = req.params;
+    const categories = getCategoriesForAccount(Number(accountId));
     res.json({ categories });
   } catch (e) {
     next(e);
@@ -45,13 +48,13 @@ categoriesRouter.get('/categories/system', async (_req: Request, res: Response, 
 });
 
 /**
- * GET /api/user/:userId/categories/custom
- * Get user's custom categories only
+ * GET /api/accounts/:accountId/categories/custom
+ * Get account's custom categories only (excludes system categories)
  */
-categoriesRouter.get('/user/:userId/categories/custom', async (req: Request, res: Response, next: NextFunction) => {
+categoriesRouter.get('/accounts/:accountId/categories/custom', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId } = req.params;
-    const categories = getUserCustomCategories(userId);
+    const { accountId } = req.params;
+    const categories = getAccountCategories(Number(accountId));
     res.json({ categories });
   } catch (e) {
     next(e);
@@ -59,24 +62,24 @@ categoriesRouter.get('/user/:userId/categories/custom', async (req: Request, res
 });
 
 /**
- * POST /api/user/:userId/categories
- * Create a new custom category for user
+ * POST /api/accounts/:accountId/categories
+ * Create a new custom category for an account
  */
-categoriesRouter.post('/user/:userId/categories', async (req: Request, res: Response, next: NextFunction) => {
+categoriesRouter.post('/accounts/:accountId/categories', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId } = req.params;
+    const { accountId } = req.params;
     const { name } = req.body;
     
     if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'name is required' });
     }
     
-    // Check if category name already exists
-    if (categoryNameExists(userId, name)) {
-      return res.status(409).json({ error: 'Category name already exists' });
+    // Check if category name already exists for this account
+    if (categoryNameExists(Number(accountId), name)) {
+      return res.status(409).json({ error: 'Category name already exists for this account' });
     }
     
-    const category = createCategory(userId, name);
+    const category = createCategory(Number(accountId), name);
     res.status(201).json({ category });
   } catch (e) {
     next(e);
@@ -84,21 +87,21 @@ categoriesRouter.post('/user/:userId/categories', async (req: Request, res: Resp
 });
 
 /**
- * PATCH /api/user/:userId/categories/:categoryId
- * Update category name (only for user-custom categories)
+ * PATCH /api/accounts/:accountId/categories/:categoryId
+ * Update category name (only for account-scoped categories)
  */
-categoriesRouter.patch('/user/:userId/categories/:categoryId', async (req: Request, res: Response, next: NextFunction) => {
+categoriesRouter.patch('/accounts/:accountId/categories/:categoryId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId, categoryId } = req.params;
+    const { accountId, categoryId } = req.params;
     const { name } = req.body;
     
     if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'name is required' });
     }
     
-    // Check if new name already exists
-    if (categoryNameExists(userId, name)) {
-      return res.status(409).json({ error: 'Category name already exists' });
+    // Check if new name already exists for this account
+    if (categoryNameExists(Number(accountId), name)) {
+      return res.status(409).json({ error: 'Category name already exists for this account' });
     }
     
     const category = updateCategoryName(Number(categoryId), name);
@@ -114,10 +117,10 @@ categoriesRouter.patch('/user/:userId/categories/:categoryId', async (req: Reque
 });
 
 /**
- * DELETE /api/user/:userId/categories/:categoryId
- * Delete category (only user-custom categories)
+ * DELETE /api/accounts/:accountId/categories/:categoryId
+ * Delete category (only account-scoped categories)
  */
-categoriesRouter.delete('/user/:userId/categories/:categoryId', async (_req: Request, res: Response, next: NextFunction) => {
+categoriesRouter.delete('/accounts/:accountId/categories/:categoryId', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { categoryId } = _req.params;
     const deleted = deleteCategory(Number(categoryId));

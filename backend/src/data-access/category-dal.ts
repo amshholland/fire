@@ -2,8 +2,13 @@
  * Category Data Access Layer
  * 
  * Handles all database operations for Category entity.
- * Supports both system-defined categories (available to all users) 
- * and user-custom categories (specific to individual users).
+ * Supports system-defined categories (global) and account-scoped categories.
+ * 
+ * DESIGN NOTES:
+ * - System categories (is_system=1, account_id=NULL) are global and available for all accounts
+ * - Account-scoped categories (is_system=0, account_id=X) apply only to transactions from that account
+ * - Categories are account-scoped, not user-scoped
+ * - This enables per-account categorization rules without cross-account conflicts
  */
 
 import { getDatabase } from '../database/database';
@@ -12,24 +17,24 @@ export interface Category {
   id: number;
   name: string;
   is_system: boolean;
-  user_id: string | null;
+  account_id: number | null;
 }
 
 /**
- * Create a user-custom category
+ * Create an account-scoped category
  * 
- * @param userId - User UUID
+ * @param accountId - Account ID to scope this category to
  * @param name - Category name
  * @returns Created category object
  */
-export function createCategory(userId: string, name: string): Category {
+export function createCategory(accountId: number, name: string): Category {
   const db = getDatabase();
   const stmt = db.prepare(`
-    INSERT INTO categories (name, is_system, user_id)
+    INSERT INTO categories (name, is_system, account_id)
     VALUES (?, 0, ?)
   `);
   
-  const result = stmt.run(name, userId);
+  const result = stmt.run(name, accountId);
   
   return getCategoryById(Number(result.lastInsertRowid))!;
 }
@@ -51,30 +56,30 @@ export function getCategoryById(id: number): Category | undefined {
     id: row.id,
     name: row.name,
     is_system: Boolean(row.is_system),
-    user_id: row.user_id
+    account_id: row.account_id
   };
 }
 
 /**
- * Get all categories available to a user (system + user-custom)
+ * Get all categories available for an account (system + account-scoped)
  * 
- * @param userId - User UUID
+ * @param accountId - Account ID
  * @returns Array of categories ordered by name
  */
-export function getCategoriesForUser(userId: string): Category[] {
+export function getCategoriesForAccount(accountId: number): Category[] {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT * FROM categories 
-    WHERE is_system = 1 OR user_id = ?
+    WHERE is_system = 1 OR account_id = ?
     ORDER BY name
   `);
-  const rows = stmt.all(userId) as any[];
+  const rows = stmt.all(accountId) as any[];
   
   return rows.map(row => ({
     id: row.id,
     name: row.name,
     is_system: Boolean(row.is_system),
-    user_id: row.user_id
+    account_id: row.account_id
   }));
 }
 
@@ -92,32 +97,32 @@ export function getSystemCategories(): Category[] {
     id: row.id,
     name: row.name,
     is_system: Boolean(row.is_system),
-    user_id: row.user_id
+    account_id: row.account_id
   }));
 }
 
 /**
- * Get user-custom categories only
+ * Get account-scoped categories only (excludes system categories)
  * 
- * @param userId - User UUID
- * @returns Array of user's custom categories
+ * @param accountId - Account ID
+ * @returns Array of account's custom categories
  */
-export function getUserCustomCategories(userId: string): Category[] {
+export function getAccountCategories(accountId: number): Category[] {
   const db = getDatabase();
-  const stmt = db.prepare('SELECT * FROM categories WHERE user_id = ? ORDER BY name');
-  const rows = stmt.all(userId) as any[];
+  const stmt = db.prepare('SELECT * FROM categories WHERE account_id = ? ORDER BY name');
+  const rows = stmt.all(accountId) as any[];
   
   return rows.map(row => ({
     id: row.id,
     name: row.name,
     is_system: Boolean(row.is_system),
-    user_id: row.user_id
+    account_id: row.account_id
   }));
 }
 
 /**
  * Update category name
- * Only user-custom categories can be updated (system categories are read-only)
+ * Only account-scoped categories can be updated (system categories are read-only)
  * 
  * @param categoryId - Category ID
  * @param newName - New category name
@@ -140,7 +145,7 @@ export function updateCategoryName(categoryId: number, newName: string): Categor
 
 /**
  * Delete category
- * Only user-custom categories can be deleted (system categories are protected)
+ * Only account-scoped categories can be deleted (system categories are protected)
  * Transactions with this category will have category_id set to NULL (via ON DELETE SET NULL)
  * 
  * @param categoryId - Category ID
@@ -162,20 +167,20 @@ export function deleteCategory(categoryId: number): boolean {
 }
 
 /**
- * Check if category name already exists for user
+ * Check if category name already exists for account
  * Useful for preventing duplicate category names
  * 
- * @param userId - User UUID
+ * @param accountId - Account ID
  * @param name - Category name to check
  * @returns True if category name exists
  */
-export function categoryNameExists(userId: string, name: string): boolean {
+export function categoryNameExists(accountId: number, name: string): boolean {
   const db = getDatabase();
   const stmt = db.prepare(`
     SELECT COUNT(*) as count FROM categories 
-    WHERE (is_system = 1 OR user_id = ?) AND name = ?
+    WHERE (is_system = 1 OR account_id = ?) AND name = ?
   `);
-  const result = stmt.get(userId, name) as any;
+  const result = stmt.get(accountId, name) as any;
   
   return result.count > 0;
 }

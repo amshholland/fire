@@ -4,6 +4,12 @@
  * Handles all database operations for Transaction entity.
  * Supports both Plaid-synced and manually entered transactions.
  * Includes advanced query functions for filtering and reporting.
+ * 
+ * DESIGN NOTES:
+ * - Plaid category fields (plaid_category_*) are immutable inputs stored verbatim
+ * - category_id references the app Category model (authoritative for budgets/reports)
+ * - Users can override category_id without affecting Plaid data
+ * - This separation enables future rule-based categorization
  */
 
 import { getDatabase } from '../database/database';
@@ -16,6 +22,11 @@ export interface Transaction {
   date: string;
   amount: number;
   merchant: string | null;
+  // Plaid category data (immutable, stored verbatim for audit/debugging)
+  plaid_category_primary: string | null;
+  plaid_category_detailed: string | null;
+  plaid_category_confidence: number | null;
+  // App category (authoritative for budgets/reports/FIRE calculations)
   category_id: number | null;
   is_manual: boolean;
 }
@@ -27,6 +38,11 @@ export interface CreateTransactionParams {
   date: string;
   amount: number;
   merchant?: string | null;
+  // Plaid category data (optional, for Plaid-synced transactions)
+  plaid_category_primary?: string | null;
+  plaid_category_detailed?: string | null;
+  plaid_category_confidence?: number | null;
+  // App category assignment (optional, defaults to null)
   category_id?: number | null;
   is_manual?: boolean;
 }
@@ -45,14 +61,21 @@ export interface TransactionQueryParams {
  * Create a new transaction
  * Prevents duplicate Plaid transactions via unique constraint on plaid_transaction_id
  * 
+ * Plaid category fields are stored verbatim and never modified.
+ * category_id can be set explicitly or left null for later assignment.
+ * 
  * @param params - Transaction creation parameters
  * @returns Created transaction object
  */
 export function createTransaction(params: CreateTransactionParams): Transaction {
   const db = getDatabase();
   const stmt = db.prepare(`
-    INSERT INTO transactions (user_id, account_id, plaid_transaction_id, date, amount, merchant, category_id, is_manual)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO transactions (
+      user_id, account_id, plaid_transaction_id, date, amount, merchant,
+      plaid_category_primary, plaid_category_detailed, plaid_category_confidence,
+      category_id, is_manual
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const result = stmt.run(
@@ -62,6 +85,9 @@ export function createTransaction(params: CreateTransactionParams): Transaction 
     params.date,
     params.amount,
     params.merchant || null,
+    params.plaid_category_primary || null,
+    params.plaid_category_detailed || null,
+    params.plaid_category_confidence || null,
     params.category_id || null,
     params.is_manual ? 1 : 0
   );
@@ -90,6 +116,9 @@ export function getTransactionById(id: number): Transaction | undefined {
     date: row.date,
     amount: row.amount,
     merchant: row.merchant,
+    plaid_category_primary: row.plaid_category_primary,
+    plaid_category_detailed: row.plaid_category_detailed,
+    plaid_category_confidence: row.plaid_category_confidence,
     category_id: row.category_id,
     is_manual: Boolean(row.is_manual)
   };
@@ -117,6 +146,9 @@ export function getTransactionByPlaidId(plaidTransactionId: string): Transaction
     date: row.date,
     amount: row.amount,
     merchant: row.merchant,
+    plaid_category_primary: row.plaid_category_primary,
+    plaid_category_detailed: row.plaid_category_detailed,
+    plaid_category_confidence: row.plaid_category_confidence,
     category_id: row.category_id,
     is_manual: Boolean(row.is_manual)
   };
@@ -158,7 +190,9 @@ export function queryTransactions(params: TransactionQueryParams): any[] {
   
   let query = `
     SELECT 
-      t.id, t.user_id, t.account_id, t.plaid_transaction_id, t.date, t.amount, t.merchant, t.category_id, t.is_manual,
+      t.id, t.user_id, t.account_id, t.plaid_transaction_id, t.date, t.amount, t.merchant,
+      t.plaid_category_primary, t.plaid_category_detailed, t.plaid_category_confidence,
+      t.category_id, t.is_manual,
       c.name as category_name
     FROM transactions t
     LEFT JOIN categories c ON t.category_id = c.id
@@ -187,6 +221,9 @@ export function queryTransactions(params: TransactionQueryParams): any[] {
     date: row.date,
     amount: row.amount,
     merchant: row.merchant,
+    plaid_category_primary: row.plaid_category_primary,
+    plaid_category_detailed: row.plaid_category_detailed,
+    plaid_category_confidence: row.plaid_category_confidence,
     category_id: row.category_id,
     is_manual: Boolean(row.is_manual),
     category_name: row.category_name
@@ -222,6 +259,9 @@ export function getTransactionsByAccountId(accountId: number): Transaction[] {
     date: row.date,
     amount: row.amount,
     merchant: row.merchant,
+    plaid_category_primary: row.plaid_category_primary,
+    plaid_category_detailed: row.plaid_category_detailed,
+    plaid_category_confidence: row.plaid_category_confidence,
     category_id: row.category_id,
     is_manual: Boolean(row.is_manual)
   }));
@@ -289,6 +329,22 @@ export function updateTransaction(
   stmt.run(...values);
   
   return getTransactionById(transactionId);
+}
+
+/**
+ * Override transaction category
+ * Users can reassign a transaction to a different app category without affecting Plaid data.
+ * This enables per-transaction customization for budgets and reporting.
+ * 
+ * @param transactionId - Transaction ID
+ * @param categoryId - New category ID (or null to uncategorize)
+ * @returns Updated transaction object
+ */
+export function updateTransactionCategory(
+  transactionId: number,
+  categoryId: number | null
+): Transaction | undefined {
+  return updateTransaction(transactionId, { category_id: categoryId });
 }
 
 /**
