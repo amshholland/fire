@@ -4,34 +4,21 @@ import type { ColumnsType } from 'antd/es/table/InternalTable.js'
 import Context from '../../context/plaidContext.tsx'
 
 interface Transaction {
+  id?: number
   transaction_id: string
-  merchant_name?: string
-  name?: string
+  merchant?: string | null
   amount: number
   date?: string
-  category?: string[]
-}
-
-interface TransactionsResponse {
-  latest_transactions?: Transaction[]
-  transactions?: Transaction[]
-  error?: string
+  category_name?: string | null
 }
 
 /**
- * Fetches transactions from the backend API
+ * Fetch all transactions from the database for a user
  */
-const fetchTransactionsData = async (
-  accessToken: string
+const fetchTransactionsFromDB = async (
+  userId: string
 ): Promise<Transaction[]> => {
-  if (!accessToken) {
-    throw new Error(
-      'Access token not available. Please link your account first.'
-    )
-  }
-
-  const params = new URLSearchParams({ access_token: accessToken })
-  const response = await fetch(`/api/transactions?${params}`, {
+  const response = await fetch(`/api/user/${userId}/transactions`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' }
   })
@@ -40,28 +27,59 @@ const fetchTransactionsData = async (
     throw new Error('Failed to fetch transactions')
   }
 
-  const data: TransactionsResponse = await response.json()
-  return data.latest_transactions || data.transactions || []
+  const data = await response.json()
+  return data.transactions || []
+}
+
+/**
+ * Sync new transactions from Plaid and return all transactions
+ */
+const syncTransactionsWithPlaid = async (
+  userId: string,
+  accessToken: string
+): Promise<Transaction[]> => {
+  const response = await fetch(`/api/user/${userId}/transactions/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken })
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to sync transactions')
+  }
+
+  const data = await response.json()
+  return data.transactions || []
 }
 
 const Transactions: React.FC = () => {
   const [dataSource, setDataSource] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(false)
   const { accessToken } = useContext(Context)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  const handleFetchTransactions = useCallback(async () => {
-    if (!accessToken) {
-      message.error(
-        'Access token not available. Please link your account first.'
-      )
-      return
+  // Get userId from localStorage
+  useEffect(() => {
+    const storedUser = localStorage.getItem('googleUser')
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser)
+        setUserId(user.userId)
+      } catch (error) {
+        console.error('Failed to parse user data:', error)
+      }
     }
+  }, [])
+
+  // Load transactions from database on mount
+  const handleLoadTransactions = useCallback(async () => {
+    if (!userId) return
 
     setLoading(true)
     try {
-      const transactions = await fetchTransactionsData(accessToken)
+      const transactions = await fetchTransactionsFromDB(userId)
       setDataSource(transactions)
-      message.success(`Fetched ${transactions.length} transactions`)
+      message.success(`Loaded ${transactions.length} transactions`)
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error'
@@ -69,21 +87,42 @@ const Transactions: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [accessToken])
+  }, [userId])
 
-  // Fetch transactions on mount or when accessToken changes
-  useEffect(() => {
-    if (accessToken) {
-      handleFetchTransactions()
+  // Refresh transactions - sync from Plaid and get all transactions
+  const handleRefreshTransactions = useCallback(async () => {
+    if (!userId || !accessToken) {
+      message.error('Missing user ID or access token')
+      return
     }
-  }, [accessToken, handleFetchTransactions])
+
+    setLoading(true)
+    try {
+      const transactions = await syncTransactionsWithPlaid(userId, accessToken)
+      setDataSource(transactions)
+      message.success(`Synced and loaded ${transactions.length} transactions`)
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error'
+      message.error(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }, [userId, accessToken])
+
+  // Load transactions on mount
+  useEffect(() => {
+    if (userId) {
+      handleLoadTransactions()
+    }
+  }, [userId, handleLoadTransactions])
 
   const columns: ColumnsType<Transaction> = [
     {
       title: 'Merchant Name',
-      dataIndex: 'merchant_name',
-      key: 'merchant_name',
-      render: (_text, record) => record.merchant_name || record.name || 'N/A'
+      dataIndex: 'merchant',
+      key: 'merchant',
+      render: (merchant: string | null | undefined) => merchant || 'N/A'
     },
     {
       title: 'Amount',
@@ -98,10 +137,9 @@ const Transactions: React.FC = () => {
     },
     {
       title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
-      render: (category: string[] | string | undefined) =>
-        Array.isArray(category) ? category.join(', ') : category || 'N/A'
+      dataIndex: 'category_name',
+      key: 'category_name',
+      render: (categoryName: string | null | undefined) => categoryName || 'N/A'
     }
   ]
 
@@ -110,7 +148,7 @@ const Transactions: React.FC = () => {
       <h1>Transactions</h1>
       <Button
         type="primary"
-        onClick={handleFetchTransactions}
+        onClick={handleRefreshTransactions}
         loading={loading}
         style={{ marginBottom: '16px' }}
       >

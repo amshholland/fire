@@ -125,37 +125,46 @@ export function getTransactionByPlaidId(plaidTransactionId: string): Transaction
 /**
  * Query transactions with flexible filters
  * Optimized for common use cases: filtering by user, account, category, date range
+ * Includes category name from categories table
  * 
  * @param params - Query parameters for filtering
  * @returns Array of matching transactions ordered by date DESC
  */
-export function queryTransactions(params: TransactionQueryParams): Transaction[] {
+export function queryTransactions(params: TransactionQueryParams): any[] {
   const db = getDatabase();
   
-  const conditions: string[] = ['user_id = ?'];
+  const conditions: string[] = ['t.user_id = ?'];
   const values: any[] = [params.userId];
   
   if (params.accountId !== undefined) {
-    conditions.push('account_id = ?');
+    conditions.push('t.account_id = ?');
     values.push(params.accountId);
   }
   
   if (params.categoryId !== undefined) {
-    conditions.push('category_id = ?');
+    conditions.push('t.category_id = ?');
     values.push(params.categoryId);
   }
   
   if (params.startDate !== undefined) {
-    conditions.push('date >= ?');
+    conditions.push('t.date >= ?');
     values.push(params.startDate);
   }
   
   if (params.endDate !== undefined) {
-    conditions.push('date <= ?');
+    conditions.push('t.date <= ?');
     values.push(params.endDate);
   }
   
-  let query = `SELECT * FROM transactions WHERE ${conditions.join(' AND ')} ORDER BY date DESC`;
+  let query = `
+    SELECT 
+      t.id, t.user_id, t.account_id, t.plaid_transaction_id, t.date, t.amount, t.merchant, t.category_id, t.is_manual,
+      c.name as category_name
+    FROM transactions t
+    LEFT JOIN categories c ON t.category_id = c.id
+    WHERE ${conditions.join(' AND ')} 
+    ORDER BY t.date DESC
+  `;
   
   if (params.limit !== undefined) {
     query += ' LIMIT ?';
@@ -179,7 +188,8 @@ export function queryTransactions(params: TransactionQueryParams): Transaction[]
     amount: row.amount,
     merchant: row.merchant,
     category_id: row.category_id,
-    is_manual: Boolean(row.is_manual)
+    is_manual: Boolean(row.is_manual),
+    category_name: row.category_name
   }));
 }
 
