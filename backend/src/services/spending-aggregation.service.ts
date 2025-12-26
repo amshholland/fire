@@ -239,7 +239,7 @@ export interface SpendingAggregationResponse {
 export function aggregateMonthlySpending(
   params: SpendingAggregationParams
 ): SpendingAggregationResponse {
-  const { user_id, month, year } = params;
+  const { month, year } = params;
 
   // Validate month
   if (month < 1 || month > 12) {
