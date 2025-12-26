@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { config as appConfig } from './config/env';
 import { apiErrorMiddleware } from './utils/errors';
+import { initializeDatabase, seedDatabase } from './db/database';
 
 import { infoRouter } from './routes/info';
 import { linkRouter } from './routes/link';
@@ -19,8 +20,15 @@ import { statementsRouter } from './routes/statements';
 import { paymentRouter } from './routes/payment';
 import { incomeRouter } from './routes/income';
 import { signalRouter } from './routes/signal';
+import { budgetsRouter } from './routes/budgets';
 
 const app = express();
+
+// Initialize database and seed with sample data
+initializeDatabase();
+if (process.env.NODE_ENV !== 'production') {
+  seedDatabase();
+}
 
 // Enable CORS for frontend on port 3000
 app.use(cors({
@@ -47,6 +55,7 @@ app.use('/api', statementsRouter);
 app.use('/api', paymentRouter);
 app.use('/api', incomeRouter);
 app.use('/api', signalRouter);
+app.use('/api', budgetsRouter);
 
 app.use('/api', apiErrorMiddleware);
 
