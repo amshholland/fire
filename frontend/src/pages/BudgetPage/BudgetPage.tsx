@@ -15,6 +15,7 @@ import { LeftOutlined, RightOutlined, LoadingOutlined } from '@ant-design/icons'
 import './BudgetPage.css'
 import { ColumnsType } from 'antd/es/table/InternalTable.js'
 import { useState, useEffect } from 'react'
+import { mockBudgetData } from './__mocks__/budgetPageMockData.ts'
 
 interface CategoryBudget {
   category_id: number
@@ -40,9 +41,14 @@ interface BudgetPageResponse {
 }
 
 const BudgetPage: React.FC = () => {
+  // Set to true to use mock data for development
+  const USE_MOCK_DATA = true
+
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1)
   const [year, setYear] = useState<number>(new Date().getFullYear())
-  const [data, setData] = useState<BudgetPageResponse | null>(null)
+  const [data, setData] = useState<BudgetPageResponse | null>(
+    USE_MOCK_DATA ? mockBudgetData : null
+  )
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,6 +63,11 @@ const BudgetPage: React.FC = () => {
     selectedMonth: number,
     selectedYear: number
   ) => {
+    // Skip API call if using mock data
+    if (USE_MOCK_DATA) {
+      return
+    }
+
     setLoading(true)
     setError(null)
 
