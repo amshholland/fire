@@ -14,7 +14,7 @@ import {
 import { LeftOutlined, RightOutlined, LoadingOutlined } from '@ant-design/icons'
 import './BudgetPage.css'
 import { ColumnsType } from 'antd/es/table/InternalTable.js'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { mockBudgetData } from './__mocks__/budgetPageMockData.ts'
 
 interface CategoryBudget {
@@ -40,7 +40,11 @@ interface BudgetPageResponse {
   summary: BudgetSummary
 }
 
-const BudgetPage: React.FC = () => {
+interface BudgetPageProps {
+  isActive?: boolean
+}
+
+const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
   // Set to true to use mock data for development
   const USE_MOCK_DATA = true
 
@@ -59,51 +63,62 @@ const BudgetPage: React.FC = () => {
   /**
    * Fetch budget page data from API
    */
-  const fetchBudgetData = async (
-    selectedMonth: number,
-    selectedYear: number
-  ) => {
-    // Skip API call if using mock data
-    if (USE_MOCK_DATA) {
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const params = new URLSearchParams({
-        userId,
-        month: String(selectedMonth),
-        year: String(selectedYear)
-      })
-
-      const response = await fetch(`/api/budgets?${params}`)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch budget data')
+  const fetchBudgetData = useCallback(
+    async (selectedMonth: number, selectedYear: number) => {
+      // Skip API call if using mock data
+      if (USE_MOCK_DATA) {
+        return
       }
 
-      const budgetData: BudgetPageResponse = await response.json()
-      setData(budgetData)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      setError(errorMessage)
-      if (message && message.error) {
-        message.error(`Failed to load budget: ${errorMessage}`)
+      setLoading(true)
+      setError(null)
+
+      try {
+        const params = new URLSearchParams({
+          userId,
+          month: String(selectedMonth),
+          year: String(selectedYear)
+        })
+
+        const response = await fetch(`/api/budgets?${params}`)
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch budget data')
+        }
+
+        const budgetData: BudgetPageResponse = await response.json()
+        setData(budgetData)
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Unknown error'
+        setError(errorMessage)
+        if (message && message.error) {
+          message.error(`Failed to load budget: ${errorMessage}`)
+        }
+      } finally {
+        setLoading(false)
       }
-    } finally {
-      setLoading(false)
-    }
-  }
+    },
+    [userId, USE_MOCK_DATA]
+  )
 
   /**
    * Load budget data on component mount and when month/year changes
    */
   useEffect(() => {
     fetchBudgetData(month, year)
-  }, [month, year])
+  }, [month, year, fetchBudgetData])
+
+  /**
+   * Refetch budget data when tab becomes active
+   * This ensures budget reflects any category changes made in Transactions tab
+   */
+  useEffect(() => {
+    if (isActive) {
+      fetchBudgetData(month, year)
+    }
+  }, [isActive, month, year, fetchBudgetData])
 
   /**
    * Navigate to previous month
@@ -257,7 +272,6 @@ const BudgetPage: React.FC = () => {
             </div>
           </div>
         }
-        bordered={false}
         style={{ marginBottom: '24px' }}
       >
         {error && (
@@ -332,7 +346,6 @@ const BudgetPage: React.FC = () => {
               rowKey="category_id"
               pagination={false}
               size="middle"
-              bordered
             />
           </>
         ) : !loading ? (

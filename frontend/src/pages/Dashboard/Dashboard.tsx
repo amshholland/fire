@@ -1,19 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react'
 import { Tabs } from 'antd'
 import './Dashboard.css'
 import Transactions from '../Transactions/Transactions.tsx'
 import BudgetPage from '../BudgetPage/BudgetPage.tsx'
 
 const Dashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('1')
+
   return (
     <div className="dashboard">
       <Tabs
-        defaultActiveKey="1"
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: '1',
             label: 'Budget',
-            children: <BudgetPage />
+            children: <BudgetPage isActive={activeTab === '1'} />
           },
           {
             key: '2',
@@ -26,4 +29,4 @@ const Dashboard: React.FC = () => {
   )
 }
 
-export default Dashboard;
+export default Dashboard

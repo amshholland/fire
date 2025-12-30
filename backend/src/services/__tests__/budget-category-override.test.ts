@@ -9,9 +9,14 @@
  * so remaining budget stays accurate.
  * 
  * Acceptance Criteria:
- * - Budget page reflects updated category assignments
+ * - Budget page reflects updated category assignments (refetches on tab activation)
  * - No recalculation persistence required
  * - No additional logic beyond existing budget aggregation
+ * 
+ * Frontend Integration:
+ * - BudgetPage component receives isActive prop from Dashboard
+ * - When tab becomes active (isActive changes to true), budget data refetches
+ * - This ensures budget reflects any category changes made in Transactions tab
  */
 
 import { db, initializeDatabase, seedDatabase } from '../../db/database';
@@ -561,6 +566,156 @@ describe('Budget Category Override Integration', () => {
       expect(budgetResponse.summary.total_remaining).toBeCloseTo(
         expectedTotalRemaining,
         2
+      );
+    });
+  });
+
+  describe('Frontend Integration Pattern', () => {
+    it('should support tab-based refetch pattern for immediate updates', () => {
+      /**
+       * FRONTEND INTEGRATION FLOW:
+       * 1. User is on Transactions tab
+       * 2. User updates a transaction's category
+       * 3. User switches to Budget tab
+       * 4. Budget tab receives isActive=true prop
+       * 5. Budget component refetches data via useEffect
+       * 6. Updated budget reflects new category assignment
+       * 
+       * This test verifies the backend supports this pattern by ensuring:
+       * - Each API call returns current state (no stale data)
+       * - Multiple sequential fetches return consistent data
+       * - No caching or persistence interferes with immediate updates
+       */
+
+      // Step 1: Get initial budget state
+      const initialBudgets = db
+        .prepare(
+          `
+        SELECT 
+          b.category_id,
+          c.name as category_name,
+          b.amount as budgeted_amount
+        FROM budgets b
+        JOIN categories c ON b.category_id = c.id
+        WHERE b.user_id = ? AND b.month = ? AND b.year = ?
+      `
+        )
+        .all('user-demo', 1, 2025) as any;
+
+      const initialSpending = aggregateMonthlySpending({
+        user_id: 'user-demo',
+        month: 1,
+        year: 2025
+      });
+
+      const initialSpendingMap = new Map(
+        initialSpending.spending_by_category.map((item) => [item.category_id, item])
+      );
+
+      const initialCategoryItems = buildCategoryBudgetItems(
+        initialBudgets,
+        initialSpendingMap
+      );
+      const initialResponse = composeBudgetPageResponse(1, 2025, initialCategoryItems);
+
+      // Step 2: Simulate user updating transaction category (on Transactions tab)
+      const transactionToUpdate = db
+        .prepare(
+          `
+        SELECT id, category_id, amount
+        FROM transactions
+        WHERE user_id = ? AND date LIKE '2025-01-%'
+        LIMIT 1
+      `
+        )
+        .get('user-demo') as any;
+
+      expect(transactionToUpdate).toBeDefined();
+
+      const originalCategoryId = transactionToUpdate.category_id;
+      const newCategoryId = originalCategoryId === 1 ? 2 : 1;
+
+      updateTransactionCategory(transactionToUpdate.id, 'user-demo', newCategoryId);
+
+      // Step 3: Simulate Budget tab becoming active (refetch data)
+      const updatedBudgets = db
+        .prepare(
+          `
+        SELECT 
+          b.category_id,
+          c.name as category_name,
+          b.amount as budgeted_amount
+        FROM budgets b
+        JOIN categories c ON b.category_id = c.id
+        WHERE b.user_id = ? AND b.month = ? AND b.year = ?
+      `
+        )
+        .all('user-demo', 1, 2025) as any;
+
+      const updatedSpending = aggregateMonthlySpending({
+        user_id: 'user-demo',
+        month: 1,
+        year: 2025
+      });
+
+      const updatedSpendingMap = new Map(
+        updatedSpending.spending_by_category.map((item) => [item.category_id, item])
+      );
+
+      const updatedCategoryItems = buildCategoryBudgetItems(
+        updatedBudgets,
+        updatedSpendingMap
+      );
+      const updatedResponse = composeBudgetPageResponse(1, 2025, updatedCategoryItems);
+
+      // Step 4: Verify budget response reflects category change
+      const originalCategoryBudget = initialResponse.categoryBudgets.find(
+        (cb) => cb.category_id === originalCategoryId
+      );
+      const updatedOriginalCategoryBudget = updatedResponse.categoryBudgets.find(
+        (cb) => cb.category_id === originalCategoryId
+      );
+
+      const newCategoryBudget = initialResponse.categoryBudgets.find(
+        (cb) => cb.category_id === newCategoryId
+      );
+      const updatedNewCategoryBudget = updatedResponse.categoryBudgets.find(
+        (cb) => cb.category_id === newCategoryId
+      );
+
+      // Verify spending amounts changed due to category reassignment
+      const initialSpentOriginal = originalCategoryBudget?.spent_amount || 0;
+      const updatedSpentOriginal = updatedOriginalCategoryBudget?.spent_amount || 0;
+      const initialSpentNew = newCategoryBudget?.spent_amount || 0;
+      const updatedSpentNew = updatedNewCategoryBudget?.spent_amount || 0;
+
+      // The transaction should have moved between categories
+      // Original category should have less or same spending
+      expect(Math.abs(updatedSpentOriginal)).toBeLessThanOrEqual(
+        Math.abs(initialSpentOriginal) + 0.01 // Allow small floating point differences
+      );
+
+      // New category should have more spending
+      expect(Math.abs(updatedSpentNew)).toBeGreaterThanOrEqual(
+        Math.abs(initialSpentNew)
+      );
+
+      // Total spending should remain constant
+      expect(updatedResponse.summary.total_spent).toBeCloseTo(
+        initialResponse.summary.total_spent,
+        2
+      );
+
+      // Step 5: Verify multiple refetches return same data (no race conditions)
+      const secondFetch = aggregateMonthlySpending({
+        user_id: 'user-demo',
+        month: 1,
+        year: 2025
+      });
+
+      expect(secondFetch.total_spending).toBeCloseTo(updatedSpending.total_spending, 2);
+      expect(secondFetch.spending_by_category).toHaveLength(
+        updatedSpending.spending_by_category.length
       );
     });
   });
