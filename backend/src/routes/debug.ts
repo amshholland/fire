@@ -9,7 +9,7 @@ export const debugRouter = Router();
  * Returns database status and table information.
  * Only available in non-production environments.
  */
-debugRouter.get('/debug/database', (req: Request, res: Response, next: NextFunction) => {
+debugRouter.get('/debug/database', (_req: Request, res: Response, next: NextFunction) => {
   try {
     // Check if database is open
     const isOpen = db.open;
@@ -105,7 +105,7 @@ debugRouter.get('/debug/transactions', (req: Request, res: Response, next: NextF
  * 
  * Returns all categories.
  */
-debugRouter.get('/debug/categories', (req: Request, res: Response, next: NextFunction) => {
+debugRouter.get('/debug/categories', (_req: Request, res: Response, next: NextFunction) => {
   try {
     const categories = db.prepare('SELECT * FROM categories ORDER BY id').all();
 
@@ -123,7 +123,7 @@ debugRouter.get('/debug/categories', (req: Request, res: Response, next: NextFun
  * 
  * Returns all users (without sensitive data).
  */
-debugRouter.get('/debug/users', (req: Request, res: Response, next: NextFunction) => {
+debugRouter.get('/debug/users', (_req: Request, res: Response, next: NextFunction) => {
   try {
     const users = db.prepare('SELECT id, email, created_at FROM users ORDER BY created_at').all();
 
