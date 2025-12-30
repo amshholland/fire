@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Table, message, Spin, Empty, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
 import { TransactionItem } from '../../types/transaction.types'
+import CategorySelector from '../../components/CategorySelector/CategorySelector'
 import './Transactions.css'
 
 const { Title } = Typography
@@ -55,9 +56,10 @@ const fetchRecentTransactions = async (
 /**
  * Transactions Page Component
  *
- * Displays recent transactions in a read-only table view with:
- * - Date, merchant, amount, category, account columns
+ * Displays recent transactions in a table view with:
+ * - Date, merchant, amount, category (with selector), account columns
  * - Sorted by date descending (most recent first)
+ * - Category selector for recategorization
  * - Empty state handling
  * - Auto-loads on mount
  */
@@ -93,7 +95,28 @@ const Transactions: React.FC = () => {
     loadTransactions()
   }, [userId])
 
+  /**Handle category change with optimistic update
+   */
+  const handleCategoryChange = (
+    transactionId: string,
+    newCategoryId: number,
+    newCategoryName: string
+  ) => {
+    setTransactions((prevTransactions) =>
+      prevTransactions.map((txn) =>
+        txn.transaction_id === transactionId
+          ? {
+              ...txn,
+              app_category_id: newCategoryId,
+              app_category_name: newCategoryName
+            }
+          : txn
+      )
+    )
+  }
+
   /**
+   *
    * Define table columns matching acceptance criteria
    */
   const columns: ColumnsType<TransactionItem> = [
@@ -130,8 +153,21 @@ const Transactions: React.FC = () => {
       dataIndex: 'app_category_name',
       key: 'app_category_name',
       width: '20%',
-      render: (categoryName: string | null) =>
-        categoryName || <span className="text-muted">Uncategorized</span>
+      render: (_categoryName: string | null, record: TransactionItem) => (
+        <CategorySelector
+          currentCategoryId={record.app_category_id}
+          currentCategoryName={record.app_category_name}
+          transactionId={record.transaction_id}
+          userId={userId}
+          onCategoryChange={(newCategoryId, newCategoryName) =>
+            handleCategoryChange(
+              record.transaction_id,
+              newCategoryId,
+              newCategoryName
+            )
+          }
+        />
+      )
     },
     {
       title: 'Account',

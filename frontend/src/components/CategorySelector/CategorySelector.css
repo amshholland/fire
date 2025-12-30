@@ -1,0 +1,21 @@
+.category-selector {
+  width: 100%;
+  min-width: 120px;
+}
+
+.category-selector .ant-select-selector {
+  border-radius: 4px;
+}
+
+.category-selector.ant-select-disabled .ant-select-selector {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.category-selector .ant-select-arrow {
+  color: #999;
+}
+
+.category-selector:hover .ant-select-selector {
+  border-color: #40a9ff;
+}

@@ -5,6 +5,13 @@ import Transactions from './Transactions'
 // Mock the fetch API
 global.fetch = jest.fn()
 
+// Mock CategorySelector to avoid complex Ant Design Select testing
+jest.mock('../../components/CategorySelector/CategorySelector', () => {
+  return function MockCategorySelector({ currentCategoryName }: any) {
+    return <div data-testid="category-selector">{currentCategoryName || 'Uncategorized'}</div>
+  }
+})
+
 // Mock Ant Design Table to avoid matchMedia issues in tests
 jest.mock('antd', () => {
   const actual = jest.requireActual('antd')
@@ -226,4 +233,71 @@ describe('Transactions Page', () => {
       expect(screen.getByText('$25.50')).toBeInTheDocument()
     })
   })
+
+  it('should render category selector for each transaction', async () => {
+    const mockTransactions = [
+      {
+        transaction_id: 'txn-1',
+        date: '2025-01-15',
+        merchant_name: 'Whole Foods',
+        amount: -85.5,
+        app_category_id: 1,
+        app_category_name: 'Groceries',
+        plaid_category_primary: null,
+        plaid_category_detailed: null,
+        account_name: 'Checking'
+      },
+      {
+        transaction_id: 'txn-2',
+        date: '2025-01-14',
+        merchant_name: 'Shell Gas',
+        amount: -45.0,
+        app_category_id: 2,
+        app_category_name: 'Transportation',
+        plaid_category_primary: null,
+        plaid_category_detailed: null,
+        account_name: 'Credit Card'
+      }
+    ]
+
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ transactions: mockTransactions })
+    })
+
+    render(<Transactions />)
+
+    await waitFor(() => {
+      const selectors = screen.getAllByTestId('category-selector')
+      expect(selectors).toHaveLength(2)
+      expect(selectors[0]).toHaveTextContent('Groceries')
+      expect(selectors[1]).toHaveTextContent('Transportation')
+    })
+  })
+
+  it('should display Uncategorized in selector for null category', async () => {
+    const uncategorizedTransaction = {
+      transaction_id: 'txn-uncategorized',
+      date: '2025-01-15',
+      merchant_name: 'Unknown Store',
+      amount: -25.0,
+      app_category_id: null,
+      app_category_name: null,
+      plaid_category_primary: null,
+      plaid_category_detailed: null,
+      account_name: 'Checking'
+    }
+
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ transactions: [uncategorizedTransaction] })
+    })
+
+    render(<Transactions />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument()
+    })
+  })
 })
+

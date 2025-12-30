@@ -15,3 +15,7 @@ npm-debug.log*
 
 # Dist folder
 dist/
+
+# Build artifacts
+build/
+frontend/build/
