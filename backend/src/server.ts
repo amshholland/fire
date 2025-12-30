@@ -21,6 +21,7 @@ import { paymentRouter } from './routes/payment';
 import { incomeRouter } from './routes/income';
 import { signalRouter } from './routes/signal';
 import { budgetsRouter } from './routes/budgets';
+import { categoriesRouter } from './routes/categories';
 import { debugRouter } from './routes/debug';
 
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api', paymentRouter);
 app.use('/api', incomeRouter);
 app.use('/api', signalRouter);
 app.use('/api', budgetsRouter);
+app.use('/api', categoriesRouter);
 
 // Debug routes (only in non-production)
 if (process.env.NODE_ENV !== 'production') {
