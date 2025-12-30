@@ -1,5 +1,17 @@
 .dashboard {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.dashboard .ant-tabs {
+  width: 100%;
+}
+
+.dashboard .ant-tabs-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
 }
