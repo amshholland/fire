@@ -3,6 +3,7 @@ import { Table, message, Spin, Empty, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
 import { TransactionItem } from '../../types/transaction.types'
 import CategorySelector from '../../components/CategorySelector/CategorySelector'
+import { useUpdateTransactionCategory } from '../../hooks/useUpdateTransactionCategory'
 import './Transactions.css'
 
 const { Title } = Typography
@@ -67,6 +68,7 @@ const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { updateCategory } = useUpdateTransactionCategory()
 
   // TODO: Replace with actual user ID from auth context
   const userId = 'user-demo'
@@ -95,13 +97,20 @@ const Transactions: React.FC = () => {
     loadTransactions()
   }, [userId])
 
-  /**Handle category change with optimistic update
+  /**
+   * Handle category change with optimistic update and database persistence
+   * Updates local state immediately for responsive UI, then persists to database
+   * If database update fails, the change will be reverted on next page load
    */
-  const handleCategoryChange = (
+  const handleCategoryChange = async (
     transactionId: string,
     newCategoryId: number,
     newCategoryName: string
   ) => {
+    // Store previous state for potential rollback
+    const previousTransactions = [...transactions]
+
+    // Optimistic update - update UI immediately
     setTransactions((prevTransactions) =>
       prevTransactions.map((txn) =>
         txn.transaction_id === transactionId
@@ -113,6 +122,18 @@ const Transactions: React.FC = () => {
           : txn
       )
     )
+
+    // Persist to database
+    const result = await updateCategory({
+      transactionId,
+      categoryId: newCategoryId,
+      userId
+    })
+
+    // Rollback on failure
+    if (!result.success) {
+      setTransactions(previousTransactions)
+    }
   }
 
   /**
