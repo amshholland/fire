@@ -2,8 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { plaidClient } from '../clients/plaidClient';
 import { sleep } from '../utils/time';
 import { prettyPrint } from '../utils/logger';
-import { queryTransactions, queryRecentTransactions } from '../db/transaction-dal';
+import { queryTransactions, queryRecentTransactions, updateTransactionCategory, getValidCategoryIds } from '../db/transaction-dal';
 import { TransactionPageQueryParams } from '../types/transaction.types';
+import { validateCategoryUpdate } from '../services/transaction-category.service';
 
 export const transactionsRouter = Router();
 
@@ -199,3 +200,89 @@ transactionsRouter.get(
     }
   }
 );
+
+/**
+ * PUT /api/transactions/:transactionId/category
+ * 
+ * Updates the category for a single transaction.
+ * 
+ * Request Body:
+ * - category_id: number (required) - New category ID to assign
+ * - userId: string (required) - User ID for authorization
+ * 
+ * Response:
+ * - 200: { success: true, message: string }
+ * - 400: { error: string } - Validation error
+ * - 404: { error: string } - Transaction not found
+ * - 500: { error: string } - Server error
+ * 
+ * Example:
+ *   PUT /api/transactions/txn-123/category
+ *   Body: { "category_id": 5, "userId": "user-123" }
+ *   Response: { "success": true, "message": "Transaction category updated successfully" }
+ */
+transactionsRouter.put('/transactions/:transactionId/category', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { transactionId } = req.params;
+    const { category_id, userId } = req.body;
+
+    // Validate required parameters
+    if (!transactionId || typeof transactionId !== 'string') {
+      return res.status(400).json({
+        error: 'Missing or invalid transactionId in URL path'
+      });
+    }
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({
+        error: 'Missing required field: userId'
+      });
+    }
+
+    if (category_id === undefined || category_id === null) {
+      return res.status(400).json({
+        error: 'Missing required field: category_id'
+      });
+    }
+
+    // Parse category_id
+    const parsedCategoryId = parseInt(String(category_id), 10);
+    if (isNaN(parsedCategoryId)) {
+      return res.status(400).json({
+        error: `Invalid category_id: ${category_id}. Must be a number.`
+      });
+    }
+
+    // Get valid categories for user
+    const validCategoryIds = getValidCategoryIds(userId);
+
+    // Validate category update
+    const validation = validateCategoryUpdate(parsedCategoryId, validCategoryIds);
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: validation.error
+      });
+    }
+
+    // Update transaction category
+    const result = updateTransactionCategory(transactionId, userId, parsedCategoryId);
+
+    if (!result.success) {
+      if (result.error?.includes('not found')) {
+        return res.status(404).json({
+          error: result.error
+        });
+      }
+      return res.status(500).json({
+        error: result.error
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Transaction category updated successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+});

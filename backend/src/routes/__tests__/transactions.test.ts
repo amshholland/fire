@@ -618,4 +618,199 @@ describe('Transactions Routes', () => {
       });
     });
   });
+
+  describe('PUT /api/transactions/:transactionId/category', () => {
+    beforeEach(() => {
+      // Mock DAL functions
+      jest.spyOn(transactionDal, 'getValidCategoryIds');
+      jest.spyOn(transactionDal, 'updateTransactionCategory');
+    });
+
+    describe('Parameter Validation', () => {
+      it('should return 400 when userId is missing', async () => {
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ category_id: 1 });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('userId');
+      });
+
+      it('should return 400 when category_id is missing', async () => {
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('category_id');
+      });
+
+      it('should return 400 when category_id is not a number', async () => {
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 'invalid' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('category_id');
+      });
+
+      it('should return 400 when category_id is negative', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: -1 });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('positive integer');
+      });
+
+      it('should return 400 when category does not exist', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 99 });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('does not exist');
+      });
+
+      it('should return 400 when category_id is zero', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 0 });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('positive integer');
+      });
+    });
+
+    describe('Successful Updates', () => {
+      it('should return 200 when category is updated successfully', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3, 5]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({ success: true });
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 5 });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(response.body.message).toContain('updated successfully');
+      });
+
+      it('should call updateTransactionCategory with correct parameters', async () => {
+        const updateSpy = transactionDal.updateTransactionCategory as jest.Mock;
+        updateSpy.mockReturnValue({ success: true });
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+
+        await request(app)
+          .put('/api/transactions/txn-456/category')
+          .send({ userId: 'user-789', category_id: 2 });
+
+        expect(updateSpy).toHaveBeenCalledWith('txn-456', 'user-789', 2);
+      });
+
+      it('should handle numeric string category_id', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({ success: true });
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: '2' });
+
+        expect(response.status).toBe(200);
+        expect(transactionDal.updateTransactionCategory).toHaveBeenCalledWith('txn-123', 'user-123', 2);
+      });
+    });
+
+    describe('Error Handling', () => {
+      it('should return 404 when transaction not found', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({
+          success: false,
+          error: 'Transaction not found or does not belong to user'
+        });
+
+        const response = await request(app)
+          .put('/api/transactions/txn-nonexistent/category')
+          .send({ userId: 'user-123', category_id: 1 });
+
+        expect(response.status).toBe(404);
+        expect(response.body.error).toContain('not found');
+      });
+
+      it('should return 500 on database error', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({
+          success: false,
+          error: 'Database error during category update'
+        });
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 1 });
+
+        expect(response.status).toBe(500);
+        expect(response.body.error).toContain('Database error');
+      });
+
+      it('should return 404 when updating transaction of different user', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({
+          success: false,
+          error: 'Transaction not found or does not belong to user'
+        });
+
+        const response = await request(app)
+          .put('/api/transactions/txn-other-user/category')
+          .send({ userId: 'user-123', category_id: 1 });
+
+        expect(response.status).toBe(404);
+      });
+    });
+
+    describe('Category Validation', () => {
+      it('should call getValidCategoryIds with correct userId', async () => {
+        const categorySpy = transactionDal.getValidCategoryIds as jest.Mock;
+        categorySpy.mockReturnValue([1, 2, 3]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({ success: true });
+
+        await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-xyz', category_id: 2 });
+
+        expect(categorySpy).toHaveBeenCalledWith('user-xyz');
+      });
+
+      it('should validate category against user valid categories', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 5 });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('does not exist');
+      });
+    });
+
+    describe('Plaid Data Preservation', () => {
+      it('should not modify Plaid category fields (verified in DAL tests)', async () => {
+        (transactionDal.getValidCategoryIds as jest.Mock).mockReturnValue([1, 2, 3]);
+        (transactionDal.updateTransactionCategory as jest.Mock).mockReturnValue({ success: true });
+
+        const response = await request(app)
+          .put('/api/transactions/txn-123/category')
+          .send({ userId: 'user-123', category_id: 2 });
+
+        expect(response.status).toBe(200);
+        // Plaid fields remain unchanged (verified in DAL layer tests)
+      });
+    });
+  });
 });
+

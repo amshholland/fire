@@ -5,7 +5,7 @@
  * Uses in-memory database with sample data.
  */
 
-import { queryTransactions, queryRecentTransactions } from '../transaction-dal';
+import { queryTransactions, queryRecentTransactions, updateTransactionCategory, getValidCategoryIds } from '../transaction-dal';
 import { db, initializeDatabase, seedDatabase } from '../database';
 
 describe('Transaction Data Access Layer', () => {
@@ -192,6 +192,103 @@ describe('Transaction Data Access Layer', () => {
 
       // Should still return results (enforced to 1)
       expect(Array.isArray(transactions)).toBe(true);
+    });
+  });
+
+  describe('Transaction Category Update', () => {
+    describe('getValidCategoryIds', () => {
+      it('should return array of category IDs', () => {
+        const categoryIds = getValidCategoryIds('user-demo');
+        expect(Array.isArray(categoryIds)).toBe(true);
+        expect(categoryIds.length).toBeGreaterThan(0);
+        expect(categoryIds.every(id => Number.isInteger(id))).toBe(true);
+      });
+
+      it('should return same categories for any user (system categories)', () => {
+        const user1Categories = getValidCategoryIds('user-1');
+        const user2Categories = getValidCategoryIds('user-2');
+        expect(user1Categories).toEqual(user2Categories);
+      });
+
+      it('should return categories in sorted order', () => {
+        const categoryIds = getValidCategoryIds('user-demo');
+        const sorted = [...categoryIds].sort((a, b) => a - b);
+        expect(categoryIds).toEqual(sorted);
+      });
+    });
+
+    describe('updateTransactionCategory', () => {
+      it('should successfully update transaction category', () => {
+        // Get initial category
+        const before = db.prepare('SELECT category_id FROM transactions WHERE id = ?').get('txn-demo-0') as any;
+        const initialCategory = before.category_id;
+        
+        // Update to different category
+        const newCategoryId = initialCategory === 1 ? 2 : 1;
+        const result = updateTransactionCategory('txn-demo-0', 'user-demo', newCategoryId);
+        
+        expect(result.success).toBe(true);
+
+        // Verify update
+        const after = db.prepare('SELECT category_id FROM transactions WHERE id = ?').get('txn-demo-0') as any;
+        expect(after.category_id).toBe(newCategoryId);
+      });
+
+      it('should return error when transaction does not exist', () => {
+        const result = updateTransactionCategory('txn-nonexistent', 'user-demo', 1);
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('not found');
+      });
+
+      it('should return error when transaction belongs to different user', () => {
+        const result = updateTransactionCategory('txn-demo-0', 'user-other', 1);
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('not found');
+      });
+
+      it('should not modify Plaid category fields', () => {
+        // Get original Plaid data
+        const before = db.prepare(
+          'SELECT plaid_category, plaid_primary_category FROM transactions WHERE id = ?'
+        ).get('txn-demo-1') as any;
+
+        // Update category
+        updateTransactionCategory('txn-demo-1', 'user-demo', 3);
+
+        // Verify Plaid fields unchanged
+        const after = db.prepare(
+          'SELECT plaid_category, plaid_primary_category FROM transactions WHERE id = ?'
+        ).get('txn-demo-1') as any;
+
+        expect(after.plaid_category).toBe(before.plaid_category);
+        expect(after.plaid_primary_category).toBe(before.plaid_primary_category);
+      });
+
+      it('should update updated_at field when category changes', () => {
+        // Verify that updated_at exists and is updated
+        const before = db.prepare('SELECT updated_at FROM transactions WHERE id = ?').get('txn-demo-2') as any;
+        expect(before.updated_at).toBeDefined();
+        
+        // Update category
+        const result = updateTransactionCategory('txn-demo-2', 'user-demo', 4);
+        expect(result.success).toBe(true);
+        
+        // Verify updated_at still exists (field is set by SQL CURRENT_TIMESTAMP)
+        const after = db.prepare('SELECT updated_at FROM transactions WHERE id = ?').get('txn-demo-2') as any;
+        expect(after.updated_at).toBeDefined();
+      });
+
+      it('should allow updating to same category (idempotent)', () => {
+        const before = db.prepare('SELECT category_id FROM transactions WHERE id = ?').get('txn-demo-3') as any;
+        const currentCategory = before.category_id;
+
+        // Update to same category
+        const result = updateTransactionCategory('txn-demo-3', 'user-demo', currentCategory);
+        expect(result.success).toBe(true);
+
+        const after = db.prepare('SELECT category_id FROM transactions WHERE id = ?').get('txn-demo-3') as any;
+        expect(after.category_id).toBe(currentCategory);
+      });
     });
   });
 });

@@ -148,3 +148,81 @@ export function queryRecentTransactions(
 
   return db.prepare(query).all(userId, validatedLimit) as TransactionItemDTO[];
 }
+
+/**
+ * Update transaction category
+ * 
+ * Updates the category_id for a single transaction.
+ * Does not modify Plaid category fields (metadata preserved).
+ * 
+ * @param transactionId - Transaction ID to update
+ * @param userId - User ID (for authorization check)
+ * @param categoryId - New category ID to assign
+ * @returns Success status
+ */
+export function updateTransactionCategory(
+  transactionId: string,
+  userId: string,
+  categoryId: number
+): { success: boolean; error?: string } {
+  try {
+    // Verify transaction exists and belongs to user
+    const checkQuery = `
+      SELECT id FROM transactions
+      WHERE id = ? AND user_id = ?
+    `;
+    const existingTransaction = db.prepare(checkQuery).get(transactionId, userId);
+
+    if (!existingTransaction) {
+      return {
+        success: false,
+        error: 'Transaction not found or does not belong to user'
+      };
+    }
+
+    // Update category_id only (Plaid fields untouched)
+    const updateQuery = `
+      UPDATE transactions
+      SET category_id = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ?
+    `;
+
+    const result = db.prepare(updateQuery).run(categoryId, transactionId, userId);
+
+    if (result.changes === 0) {
+      return {
+        success: false,
+        error: 'Failed to update transaction category'
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating transaction category:', error);
+    return {
+      success: false,
+      error: 'Database error during category update'
+    };
+  }
+}
+
+/**
+ * Get valid category IDs for a user
+ * 
+ * Returns all category IDs that the user can assign to transactions.
+ * Currently returns all system categories (no user-specific categories yet).
+ * 
+ * @param _userId - User ID
+ * @returns Array of valid category IDs
+ */
+export function getValidCategoryIds(_userId: string): number[] {
+  try {
+    const query = `SELECT id FROM categories ORDER BY id`;
+    const results = db.prepare(query).all() as Array<{ id: number }>;
+    return results.map(row => row.id);
+  } catch (error) {
+    console.error('Error fetching valid categories:', error);
+    return [];
+  }
+}
