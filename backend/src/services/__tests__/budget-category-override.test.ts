@@ -297,11 +297,6 @@ describe('Budget Category Override Integration', () => {
       expect(tables.length).toBe(0);
 
       // Verify aggregation is computed each time (not cached)
-      const aggregation1 = aggregateMonthlySpending({
-        user_id: 'user-demo',
-        month: 1,
-        year: 2025
-      });
 
       // Make a category change
       updateTransactionCategory('txn-demo-3', 'user-demo', 5);
