@@ -9,9 +9,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-// Determine database path - use in-memory for tests, file-based for production
-const isDevelopment = process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'production';
-const dbPath = isDevelopment ? ':memory:' : path.join(process.cwd(), 'data', 'fire.db');
+// Determine database path - use in-memory for tests and development, file-based for production
+const isProduction = process.env.NODE_ENV === 'production';
+const dbPath = isProduction ? path.join(process.cwd(), 'data', 'fire.db') : ':memory:';
 
 export const db = new (Database as any)(dbPath);
 

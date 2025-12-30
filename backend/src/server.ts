@@ -56,7 +56,7 @@ app.use('/api', paymentRouter);
 app.use('/api', incomeRouter);
 app.use('/api', signalRouter);
 app.use('/api', budgetsRouter);
-
+app.use('/api/transactions', transactionsPageRouter);
 app.use('/api', apiErrorMiddleware);
 
 app.listen(appConfig.APP_PORT, () => {
