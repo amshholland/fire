@@ -39,7 +39,7 @@ debugRouter.get('/debug/database', (req: Request, res: Response, next: NextFunct
     sampleTables.forEach(tableName => {
       if (tables.some(t => t.name === tableName)) {
         try {
-          sampleData[tableName] = db.prepare(`SELECT * FROM ${tableName} LIMIT 3`).all();
+          sampleData[tableName] = db.prepare(`SELECT * FROM ${tableName}`).all();
         } catch (error) {
           sampleData[tableName] = [];
         }
@@ -69,7 +69,6 @@ debugRouter.get('/debug/database', (req: Request, res: Response, next: NextFunct
  */
 debugRouter.get('/debug/transactions', (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
     const userId = req.query.userId as string;
 
     let query = `
@@ -88,8 +87,7 @@ debugRouter.get('/debug/transactions', (req: Request, res: Response, next: NextF
       params.push(userId);
     }
 
-    query += ' ORDER BY t.date DESC LIMIT ?';
-    params.push(limit);
+    query += ' ORDER BY t.date DESC';
 
     const transactions = db.prepare(query).all(...params);
 
