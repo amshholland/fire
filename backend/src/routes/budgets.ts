@@ -18,6 +18,9 @@ import {
   composeBudgetPageResponse
 } from '../services/budget-calculator.service';
 import { BudgetPageResponseDTO } from '../types/budget.types';
+import { BudgetSetupRequest, BudgetSetupResponse } from '../types/budget-setup.types';
+import { createOrUpdateBudgets } from '../db/budgets-dal';
+import { categoryExists } from '../db/categories-dal';
 
 export const budgetsRouter = Router();
 
@@ -153,6 +156,192 @@ budgetsRouter.get('/budgets', async (req: Request, res: Response, next: NextFunc
 
     res.status(200).json(response);
   } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/budgets/setup
+ * 
+ * Create or update budget records for a specific month/year.
+ * 
+ * Uses UPSERT logic: Overwrites existing budgets for the same
+ * user/category/month/year combination.
+ * 
+ * Request Body (BudgetSetupRequest):
+ * {
+ *   "user_id": "user-123",
+ *   "month": 1,
+ *   "year": 2025,
+ *   "budgets": [
+ *     {
+ *       "category_id": 1,
+ *       "category_name": "Groceries",
+ *       "planned_amount": 300.00
+ *     },
+ *     {
+ *       "category_id": 2,
+ *       "category_name": "Dining Out",
+ *       "planned_amount": 200.00
+ *     }
+ *   ]
+ * }
+ * 
+ * Response (BudgetSetupResponse):
+ * {
+ *   "success": true,
+ *   "count": 2,
+ *   "month": 1,
+ *   "year": 2025
+ * }
+ * 
+ * Status Codes:
+ * - 200: Success (budgets created/updated)
+ * - 400: Validation error (missing fields, invalid data)
+ * - 500: Server error
+ * 
+ * Validations:
+ * - user_id: required, non-empty string
+ * - month: required, integer 1-12
+ * - year: required, integer 1970-2100
+ * - budgets: required, non-empty array
+ * - category_id: must exist in categories table
+ * - planned_amount: must be non-negative
+ * - No duplicate category_ids in request
+ */
+budgetsRouter.post('/budgets/setup', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const requestBody: BudgetSetupRequest = req.body;
+
+    // Validate user_id
+    if (!requestBody.user_id || typeof requestBody.user_id !== 'string') {
+      return res.status(400).json({
+        error: 'Missing or invalid required field: user_id'
+      });
+    }
+
+    // Validate month
+    if (requestBody.month === undefined || requestBody.month === null) {
+      return res.status(400).json({
+        error: 'Missing required field: month'
+      });
+    }
+
+    const parsedMonth = parseInt(String(requestBody.month), 10);
+    if (isNaN(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) {
+      return res.status(400).json({
+        error: `Invalid month: ${requestBody.month}. Must be between 1 and 12.`
+      });
+    }
+
+    // Validate year
+    if (requestBody.year === undefined || requestBody.year === null) {
+      return res.status(400).json({
+        error: 'Missing required field: year'
+      });
+    }
+
+    const parsedYear = parseInt(String(requestBody.year), 10);
+    if (isNaN(parsedYear) || parsedYear < 1970 || parsedYear > 2100) {
+      return res.status(400).json({
+        error: `Invalid year: ${requestBody.year}. Must be between 1970 and 2100.`
+      });
+    }
+
+    // Validate budgets array
+    if (!requestBody.budgets || !Array.isArray(requestBody.budgets)) {
+      return res.status(400).json({
+        error: 'Missing or invalid required field: budgets (must be array)'
+      });
+    }
+
+    if (requestBody.budgets.length === 0) {
+      return res.status(400).json({
+        error: 'budgets array cannot be empty'
+      });
+    }
+
+    // Validate each budget item
+    const categoryIds = new Set<number>();
+
+    for (let i = 0; i < requestBody.budgets.length; i++) {
+      const item = requestBody.budgets[i];
+
+      // Validate category_id
+      if (item.category_id === undefined || item.category_id === null) {
+        return res.status(400).json({
+          error: `Budget item ${i}: missing category_id`
+        });
+      }
+
+      const categoryId = parseInt(String(item.category_id), 10);
+      if (isNaN(categoryId) || categoryId < 1) {
+        return res.status(400).json({
+          error: `Budget item ${i}: invalid category_id (must be positive integer)`
+        });
+      }
+
+      // Check for duplicate category_ids
+      if (categoryIds.has(categoryId)) {
+        return res.status(400).json({
+          error: `Duplicate category_id ${categoryId} found in budgets array`
+        });
+      }
+      categoryIds.add(categoryId);
+
+      // Verify category exists
+      if (!categoryExists(categoryId)) {
+        return res.status(400).json({
+          error: `Category ID ${categoryId} does not exist`
+        });
+      }
+
+      // Validate planned_amount
+      if (item.planned_amount === undefined || item.planned_amount === null) {
+        return res.status(400).json({
+          error: `Budget item ${i}: missing planned_amount`
+        });
+      }
+
+      const amount = parseFloat(String(item.planned_amount));
+      if (isNaN(amount)) {
+        return res.status(400).json({
+          error: `Budget item ${i}: invalid planned_amount (must be number)`
+        });
+      }
+
+      if (amount < 0) {
+        return res.status(400).json({
+          error: `Budget item ${i}: planned_amount cannot be negative`
+        });
+      }
+    }
+
+    // Create or update budget records
+    const result = createOrUpdateBudgets(
+      requestBody.user_id,
+      parsedMonth,
+      parsedYear,
+      requestBody.budgets
+    );
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: result.error || 'Failed to create budgets'
+      });
+    }
+
+    // Return success response
+    const response: BudgetSetupResponse = {
+      success: true,
+      count: result.total,
+      month: parsedMonth,
+      year: parsedYear
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error in POST /api/budgets/setup:', error);
     next(error);
   }
 });

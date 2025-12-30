@@ -16,6 +16,9 @@ import express, { Express } from 'express';
 import { budgetsRouter } from '../budgets';
 import * as budgetCalculator from '../../services/budget-calculator.service';
 import * as spendingAggregation from '../../services/spending-aggregation.service';
+import { initializeDatabase, seedDatabase, db } from '../../db/database';
+import * as budgetsDal from '../../db/budgets-dal';
+import * as categoriesDal from '../../db/categories-dal';
 
 describe('Budget Routes', () => {
   let app: Express;
@@ -663,6 +666,484 @@ describe('Budget Routes', () => {
           month: 1,
           year: 2025
         });
+      });
+    });
+  });
+
+  describe('POST /api/budgets/setup', () => {
+    beforeAll(() => {
+      initializeDatabase();
+      seedDatabase();
+      
+      // Create test users for budget setup tests
+      const userInsert = db.prepare('INSERT OR IGNORE INTO users (id, email, name) VALUES (?, ?, ?)');
+      const testUsers = [
+        'user-create-test', 'user-update-test', 'user-zero-test', 'user-decimal-test',
+        'user-multi-test', 'user-spy-test', 'user-error-test', 'user-format-test',
+        'user-count-test', 'user-large-test', 'user-boundary-test', 'user-year-boundary'
+      ];
+      
+      testUsers.forEach(userId => {
+        userInsert.run(userId, `${userId}@test.com`, userId);
+      });
+    });
+
+    afterAll(() => {
+      db.close();
+    });
+
+    describe('Validation', () => {
+      it('should return 400 when user_id is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            month: 1,
+            year: 2025,
+            budgets: []
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('user_id');
+      });
+
+      it('should return 400 when month is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            year: 2025,
+            budgets: []
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('month');
+      });
+
+      it('should return 400 when year is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            budgets: []
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('year');
+      });
+
+      it('should return 400 when budgets array is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('budgets');
+      });
+
+      it('should return 400 when budgets array is empty', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: []
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('empty');
+      });
+
+      it('should return 400 when month is invalid', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 13,
+            year: 2025,
+            budgets: [{ category_id: 1, category_name: 'Test', planned_amount: 100 }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('month');
+      });
+
+      it('should return 400 when year is invalid', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 1900,
+            budgets: [{ category_id: 1, category_name: 'Test', planned_amount: 100 }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('year');
+      });
+
+      it('should return 400 when category_id is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [{ category_name: 'Test', planned_amount: 100 }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('category_id');
+      });
+
+      it('should return 400 when planned_amount is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [{ category_id: 1, category_name: 'Test' }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('planned_amount');
+      });
+
+      it('should return 400 when planned_amount is negative', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [{ category_id: 1, category_name: 'Test', planned_amount: -100 }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('negative');
+      });
+
+      it('should return 400 when category does not exist', async () => {
+        jest.spyOn(categoriesDal, 'categoryExists').mockReturnValue(false);
+
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [{ category_id: 9999, category_name: 'Test', planned_amount: 100 }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('does not exist');
+
+        jest.restoreAllMocks();
+      });
+
+      it('should return 400 when duplicate category_ids exist', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Test', planned_amount: 100 },
+              { category_id: 1, category_name: 'Test', planned_amount: 200 }
+            ]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Duplicate');
+      });
+
+      it('should return 400 when category_id is not a positive integer', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [{ category_id: 0, category_name: 'Test', planned_amount: 100 }]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('positive integer');
+      });
+    });
+
+    describe('Success Cases', () => {
+      it('should create budget records successfully', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-create-test',
+            month: 3,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 },
+              { category_id: 2, category_name: 'Dining Out', planned_amount: 200 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('count', 2);
+        expect(response.body).toHaveProperty('month', 3);
+        expect(response.body).toHaveProperty('year', 2025);
+      });
+
+      it('should update existing budgets (upsert behavior)', async () => {
+        // Create initial budgets
+        await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-update-test',
+            month: 4,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        // Update with different amount
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-update-test',
+            month: 4,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 500 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(response.body.count).toBe(1);
+      });
+
+      it('should accept zero amounts', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-zero-test',
+            month: 5,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 0 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+
+      it('should accept decimal amounts', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-decimal-test',
+            month: 6,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 123.45 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+
+      it('should handle multiple categories', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-multi-test',
+            month: 7,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 },
+              { category_id: 2, category_name: 'Dining Out', planned_amount: 200 },
+              { category_id: 3, category_name: 'Transportation', planned_amount: 150 },
+              { category_id: 4, category_name: 'Entertainment', planned_amount: 100 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.count).toBe(4);
+      });
+    });
+
+    describe('Database Integration', () => {
+      it('should call createOrUpdateBudgets with correct parameters', async () => {
+        const createSpy = jest.spyOn(budgetsDal, 'createOrUpdateBudgets');
+
+        await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-spy-test',
+            month: 8,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(createSpy).toHaveBeenCalledWith(
+          'user-spy-test',
+          8,
+          2025,
+          [{ category_id: 1, category_name: 'Groceries', planned_amount: 300 }]
+        );
+
+        createSpy.mockRestore();
+      });
+
+      it('should return 500 when database operation fails', async () => {
+        jest.spyOn(budgetsDal, 'createOrUpdateBudgets').mockReturnValue({
+          success: false,
+          created: 0,
+          updated: 0,
+          total: 0,
+          error: 'Database error'
+        });
+
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-error-test',
+            month: 9,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response.status).toBe(500);
+        expect(response.body.error).toBeDefined();
+
+        jest.restoreAllMocks();
+      });
+    });
+
+    describe('Response Format', () => {
+      it('should have correct response structure', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-format-test',
+            month: 10,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+          success: true,
+          count: expect.any(Number),
+          month: 10,
+          year: 2025
+        });
+      });
+
+      it('should return count matching number of budgets', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-count-test',
+            month: 11,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 },
+              { category_id: 2, category_name: 'Dining Out', planned_amount: 200 },
+              { category_id: 3, category_name: 'Transportation', planned_amount: 150 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.count).toBe(3);
+      });
+    });
+
+    describe('Edge Cases', () => {
+      it('should handle very large amounts', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-large-test',
+            month: 12,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Housing', planned_amount: 5000.00 }
+            ]
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+
+      it('should handle boundary month values', async () => {
+        const response1 = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-boundary-test',
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Test', planned_amount: 100 }
+            ]
+          });
+
+        const response2 = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-boundary-test',
+            month: 12,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Test', planned_amount: 100 }
+            ]
+          });
+
+        expect(response1.status).toBe(200);
+        expect(response2.status).toBe(200);
+      });
+
+      it('should handle boundary year values', async () => {
+        const response1 = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-year-boundary',
+            month: 1,
+            year: 1970,
+            budgets: [
+              { category_id: 1, category_name: 'Test', planned_amount: 100 }
+            ]
+          });
+
+        const response2 = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-year-boundary',
+            month: 1,
+            year: 2100,
+            budgets: [
+              { category_id: 1, category_name: 'Test', planned_amount: 100 }
+            ]
+          });
+
+        expect(response1.status).toBe(200);
+        expect(response2.status).toBe(200);
       });
     });
   });
