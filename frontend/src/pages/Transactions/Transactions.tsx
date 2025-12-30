@@ -1,37 +1,45 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react'
-import { Table, Button, message, Spin } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Table, message, Spin, Empty, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
-import Context from '../../context/plaidContext.tsx'
+import { TransactionItem } from '../../types/transaction.types'
+import './Transactions.css'
 
-interface Transaction {
-  transaction_id: string
-  merchant_name?: string
-  name?: string
-  amount: number
-  date?: string
-  category?: string[]
-}
+const { Title } = Typography
 
-interface TransactionsResponse {
-  latest_transactions?: Transaction[]
-  transactions?: Transaction[]
-  error?: string
+/**
+ * Format currency amount for display
+ * Negative amounts are expenses, positive are income/refunds
+ */
+const formatCurrency = (amount: number): string => {
+  const absAmount = Math.abs(amount)
+  return amount < 0 ? `-$${absAmount.toFixed(2)}` : `$${absAmount.toFixed(2)}`
 }
 
 /**
- * Fetches transactions from the backend API
+ * Format date from YYYY-MM-DD to readable format
  */
-const fetchTransactionsData = async (
-  accessToken: string
-): Promise<Transaction[]> => {
-  if (!accessToken) {
-    throw new Error(
-      'Access token not available. Please link your account first.'
-    )
-  }
+const formatDate = (dateStr: string): string => {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
 
-  const params = new URLSearchParams({ access_token: accessToken })
-  const response = await fetch(`/api/transactions?${params}`, {
+/**
+ * Fetches recent transactions from the database
+ */
+const fetchRecentTransactions = async (
+  userId: string,
+  limit: number = 50
+): Promise<TransactionItem[]> => {
+  const params = new URLSearchParams({
+    userId,
+    limit: limit.toString()
+  })
+
+  const response = await fetch(`/api/transactions/db/recent?${params}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' }
   })
@@ -40,80 +48,139 @@ const fetchTransactionsData = async (
     throw new Error('Failed to fetch transactions')
   }
 
-  const data: TransactionsResponse = await response.json()
-  return data.latest_transactions || data.transactions || []
+  const data = await response.json()
+  return data.transactions || []
 }
 
+/**
+ * Transactions Page Component
+ *
+ * Displays recent transactions in a read-only table view with:
+ * - Date, merchant, amount, category, account columns
+ * - Sorted by date descending (most recent first)
+ * - Empty state handling
+ * - Auto-loads on mount
+ */
 const Transactions: React.FC = () => {
-  const [dataSource, setDataSource] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(false)
-  const { accessToken } = useContext(Context)
+  const [transactions, setTransactions] = useState<TransactionItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleFetchTransactions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const transactions = await fetchTransactionsData(accessToken!)
-      setDataSource(transactions)
-      message.success(`Fetched ${transactions.length} transactions`)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error'
-      message.error(errorMessage)
-    } finally {
-      setLoading(false)
-    }
-  }, [accessToken])
+  // TODO: Replace with actual user ID from auth context
+  const userId = 'user-demo'
 
+  /**
+   * Load transactions on component mount
+   */
   useEffect(() => {
-    handleFetchTransactions()
-  }, [handleFetchTransactions])
+    const loadTransactions = async () => {
+      setLoading(true)
+      setError(null)
 
-  const columns: ColumnsType<Transaction> = [
+      try {
+        const data = await fetchRecentTransactions(userId, 50)
+        setTransactions(data)
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Unknown error'
+        setError(errorMessage)
+        message.error(`Failed to load transactions: ${errorMessage}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadTransactions()
+  }, [userId])
+
+  /**
+   * Define table columns matching acceptance criteria
+   */
+  const columns: ColumnsType<TransactionItem> = [
     {
-      title: 'Merchant Name',
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+      width: '12%',
+      render: (date: string) => formatDate(date),
+      sorter: (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      defaultSortOrder: 'ascend'
+    },
+    {
+      title: 'Merchant',
       dataIndex: 'merchant_name',
       key: 'merchant_name',
-      render: (_text, record) => record.merchant_name || record.name || 'N/A'
+      width: '30%',
+      ellipsis: true
     },
     {
       title: 'Amount',
       dataIndex: 'amount',
       key: 'amount',
-      render: (amount: number) => `$${Math.abs(amount).toFixed(2)}`
-    },
-    {
-      title: 'Date',
-      dataIndex: 'date',
-      key: 'date'
+      width: '12%',
+      align: 'right',
+      render: (amount: number) => (
+        <span className={amount < 0 ? 'amount-expense' : 'amount-income'}>
+          {formatCurrency(amount)}
+        </span>
+      )
     },
     {
       title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
-      render: (category: string[] | string | undefined) =>
-        Array.isArray(category) ? category.join(', ') : category || 'N/A'
+      dataIndex: 'app_category_name',
+      key: 'app_category_name',
+      width: '20%',
+      render: (categoryName: string | null) =>
+        categoryName || <span className="text-muted">Uncategorized</span>
+    },
+    {
+      title: 'Account',
+      dataIndex: 'account_name',
+      key: 'account_name',
+      width: '20%',
+      ellipsis: true,
+      render: (accountName: string | null) =>
+        accountName || <span className="text-muted">Unknown</span>
     }
   ]
 
   return (
-    <div>
-      <h1>Transactions</h1>
-      <Button
-        type="primary"
-        onClick={handleFetchTransactions}
-        loading={loading}
-        style={{ marginBottom: '16px' }}
-      >
-        Refresh Transactions
-      </Button>
-      <Spin spinning={loading}>
-        <Table<Transaction>
-          dataSource={dataSource}
-          columns={columns}
-          pagination={false}
-          rowKey="transaction_id"
+    <div className="transactions-page">
+      <Title level={2}>Recent Transactions</Title>
+
+      {loading ? (
+        <div className="loading-container">
+          <Spin size="large" />
+        </div>
+      ) : error ? (
+        <Empty
+          description={
+            <span>
+              Failed to load transactions
+              <br />
+              {error}
+            </span>
+          }
         />
-      </Spin>
+      ) : transactions.length === 0 ? (
+        <Empty
+          description="No transactions found"
+          style={{ marginTop: '40px' }}
+        />
+      ) : (
+        <Table<TransactionItem>
+          dataSource={transactions}
+          columns={columns}
+          rowKey="transaction_id"
+          pagination={{
+            pageSize: 25,
+            showSizeChanger: false,
+            showTotal: (total) => `${total} transactions`
+          }}
+          size="middle"
+          bordered
+        />
+      )}
     </div>
   )
 }

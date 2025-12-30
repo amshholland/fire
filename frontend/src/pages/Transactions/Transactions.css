@@ -1,5 +1,26 @@
-.transactions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.transactions-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.transactions-page h2 {
+  margin-bottom: 24px;
+}
+
+.amount-expense {
+  color: #d4380d;
+}
+
+.amount-income {
+  color: #52c41a;
+}
+
+.text-muted {
+  color: #999;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 40px 0;
 }
