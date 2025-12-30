@@ -1,11 +1,7 @@
-.transactions-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
 .transactions-page h2 {
-  margin-bottom: 24px;
+  margin: 0 0 24px 0;
+  font-size: 24px;
+  font-weight: 600;
 }
 
 .amount-expense {

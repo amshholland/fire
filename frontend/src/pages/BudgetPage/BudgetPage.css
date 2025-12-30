@@ -1,14 +1,9 @@
-.budget-page {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 .budget-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  margin-bottom: 24px;
 }
 
 .budget-header h2 {
@@ -32,10 +27,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .budget-page {
-    padding: 12px;
-  }
-
   .budget-header {
     flex-direction: column;
     gap: 16px;
