@@ -22,18 +22,17 @@ jest.mock('./components/LoadingView.tsx', () => ({
 
 jest.mock('./pages/LandingPage/LandingPage.tsx', () => ({
   __esModule: true,
-  default: ({ onLoginSuccess }: any) => (
+  default: ({ onLoginSuccess, user }: any) => (
     <div data-testid="landing-page">
-      <button onClick={() => onLoginSuccess({ email: 'test@example.com' })}>
-        Sign In
-      </button>
+      {!user ? (
+        <button onClick={() => onLoginSuccess({ email: 'test@example.com' })}>
+          Sign In
+        </button>
+      ) : (
+        <div>Plaid Link Component</div>
+      )}
     </div>
   )
-}))
-
-jest.mock('./pages/SetupPage/SetupPage.tsx', () => ({
-  __esModule: true,
-  default: () => <div data-testid="setup-page">Setup Page</div>
 }))
 
 jest.mock('./pages/Dashboard/Dashboard.tsx', () => ({
@@ -131,29 +130,20 @@ describe('App', () => {
   describe('Google Authenticated State', () => {
     const mockUser = { email: 'test@example.com', name: 'Test User' }
 
-    it('should render SetupPage when user is authenticated but Plaid not linked', () => {
+    it('should render LandingPage with user when in google_authenticated state', () => {
       renderApp(
         { user: mockUser, isInitialized: true },
         { state: 'google_authenticated', user: mockUser }
       )
-      expect(screen.getByTestId('setup-page')).toBeInTheDocument()
+      expect(screen.getByTestId('landing-page')).toBeInTheDocument()
     })
 
-    it('should render AppLayout with user when in google_authenticated state', () => {
+    it('should not render AppLayout in google_authenticated state', () => {
       renderApp(
         { user: mockUser, isInitialized: true },
         { state: 'google_authenticated', user: mockUser }
       )
-      expect(screen.getByTestId('app-layout')).toBeInTheDocument()
-      expect(screen.getByTestId('user-info')).toHaveTextContent(mockUser.email)
-    })
-
-    it('should pass auth handlers to AppLayout', () => {
-      renderApp(
-        { user: mockUser, isInitialized: true },
-        { state: 'google_authenticated', user: mockUser }
-      )
-      expect(screen.getByTestId('app-layout')).toBeInTheDocument()
+      expect(screen.queryByTestId('app-layout')).not.toBeInTheDocument()
     })
 
     it('should call initializeApp when initialized', () => {
@@ -185,12 +175,12 @@ describe('App', () => {
       expect(screen.getByTestId('user-info')).toHaveTextContent(mockUser.email)
     })
 
-    it('should not render SetupPage in authenticated state', () => {
+    it('should not render LandingPage in authenticated state', () => {
       renderApp(
         { user: mockUser, isInitialized: true },
         { state: 'authenticated', user: mockUser, linkSuccess: true }
       )
-      expect(screen.queryByTestId('setup-page')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('landing-page')).not.toBeInTheDocument()
     })
 
     it('should call initializeApp when initialized', () => {
@@ -256,8 +246,8 @@ describe('App', () => {
 
       rerender(<App />)
 
-      expect(screen.queryByTestId('landing-page')).not.toBeInTheDocument()
-      expect(screen.getByTestId('setup-page')).toBeInTheDocument()
+      // LandingPage still shown with user (now displaying Plaid link)
+      expect(screen.getByTestId('landing-page')).toBeInTheDocument()
     })
 
     it('should handle transition from google_authenticated to authenticated', () => {
@@ -267,7 +257,7 @@ describe('App', () => {
         { state: 'google_authenticated', user: mockUser }
       )
 
-      expect(screen.getByTestId('setup-page')).toBeInTheDocument()
+      expect(screen.getByTestId('landing-page')).toBeInTheDocument()
 
       jest.spyOn(useAppAuthStateModule, 'useAppAuthState').mockReturnValue({
         state: 'authenticated',
@@ -278,7 +268,7 @@ describe('App', () => {
 
       rerender(<App />)
 
-      expect(screen.queryByTestId('setup-page')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('landing-page')).not.toBeInTheDocument()
       expect(screen.getByTestId('dashboard')).toBeInTheDocument()
     })
   })

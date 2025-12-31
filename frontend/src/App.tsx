@@ -6,7 +6,6 @@ import { useAppInitialization } from './hooks/useAppInitialization.ts'
 import { useUserAuth } from './hooks/useUserAuth.ts'
 import { useAppAuthState } from './hooks/useAppAuthState.ts'
 import LandingPage from './pages/LandingPage/LandingPage.tsx'
-import SetupPage from './pages/SetupPage/SetupPage.tsx'
 import Dashboard from './pages/Dashboard/Dashboard.tsx'
 import ErrorPage from './pages/ErrorPage/ErrorPage.tsx'
 
@@ -27,9 +26,13 @@ const App = () => {
     return <LoadingView />
   }
 
-  // State: unauthenticated - show Google login
-  if (state === 'unauthenticated') {
-    return <LandingPage onLoginSuccess={handleLoginSuccess} />
+  // State: unauthenticated or plaid_pending - show landing page with Google auth and/or Plaid link
+  if (
+    state === 'unauthenticated' ||
+    state === 'google_authenticated' ||
+    state === 'plaid_pending'
+  ) {
+    return <LandingPage onLoginSuccess={handleLoginSuccess} user={user} />
   }
 
   // State: plaid_error - show error with retry option
@@ -49,19 +52,6 @@ const App = () => {
           onAction={() => window.location.reload()}
           onLogout={handleLogout}
         />
-      </AppLayout>
-    )
-  }
-
-  // State: google_authenticated or plaid_pending - show Plaid setup
-  if (state === 'google_authenticated' || state === 'plaid_pending') {
-    return (
-      <AppLayout
-        user={user}
-        onLoginSuccess={handleLoginSuccess}
-        onLogout={handleLogout}
-      >
-        <SetupPage />
       </AppLayout>
     )
   }

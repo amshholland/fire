@@ -80,7 +80,7 @@ npm start
 
 This will start:
 
-- Backend server on http://localhost:3001
+- Backend server on http://localhost:3030
 - Frontend dev server on http://localhost:3000
 
 **Or run them separately:**
@@ -106,14 +106,14 @@ npm run start:frontend
 
 ### Plaid (Bank Integration)
 
-1. Sign up at <https://dashboard.plaid.com/signup>
+1. Sign up at [https://dashboard.plaid.com/signup](https://dashboard.plaid.com/signup)
 2. Create a new application
 3. Copy your `client_id` and `secret` from the Keys section
 4. Use `sandbox` environment for free testing with test credentials
 
 ### Google OAuth (Authentication)
 
-1. Go to <https://console.cloud.google.com/>
+1. Go to [https://console.cloud.google.com/](https://console.cloud.google.com/)
 2. Create a new project
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials (Web application)
@@ -128,7 +128,7 @@ When using Plaid's sandbox environment, use these test credentials:
 - Password: `pass_good`
 - Select any bank (e.g., "Chase")
 
-More test credentials: <https://plaid.com/docs/sandbox/test-credentials/>
+More test credentials: [https://plaid.com/docs/sandbox/test-credentials/](https://plaid.com/docs/sandbox/test-credentials/)
 
 ## Technology Stack
 

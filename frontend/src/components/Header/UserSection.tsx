@@ -19,7 +19,7 @@ const UserSection: React.FC<UserSectionProps> = ({
 }) => {
   return (
     <>
-      {!user && <GoogleAuth onLoginSuccess={onLoginSuccess} />}
+      <GoogleAuth onLoginSuccess={onLoginSuccess} isLoggedIn={!!user} />
       {user && (
         <div className="header-user">
           <span>Welcome, {user.name || user.email}</span>

@@ -50,6 +50,9 @@ const BudgetSetupPage: React.FC = () => {
 
   const [categories, setCategories] = useState<Category[]>([])
   const [budgetAmounts, setBudgetAmounts] = useState<Record<number, number>>({})
+  const [savedBudgetAmounts, setSavedBudgetAmounts] = useState<
+    Record<number, number>
+  >({})
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth() + 1
   )
@@ -102,16 +105,17 @@ const BudgetSetupPage: React.FC = () => {
       }
 
       const data = await response.json()
-      const budgets = data.budgets || []
+      const categoryBudgets = data.categoryBudgets || []
 
       // Pre-populate budgetAmounts from fetched budgets
       const amounts: Record<number, number> = {}
-      budgets.forEach(
-        (budget: { category_id: number; planned_amount: number }) => {
-          amounts[budget.category_id] = budget.planned_amount
+      categoryBudgets.forEach(
+        (budget: { category_id: number; budgeted_amount: number }) => {
+          amounts[budget.category_id] = budget.budgeted_amount
         }
       )
       setBudgetAmounts(amounts)
+      setSavedBudgetAmounts(amounts)
     } catch (error) {
       console.error('Error fetching budgets:', error)
       // Don't show error for missing budgets - it's normal for new months
@@ -126,6 +130,23 @@ const BudgetSetupPage: React.FC = () => {
       0
     )
   }, [budgetAmounts])
+
+  // Check if budgets have been modified since last save
+  const hasUnsavedChanges = useMemo(() => {
+    // Compare current amounts to saved amounts
+    const currentKeys = Object.keys(budgetAmounts).map(Number)
+    const savedKeys = Object.keys(savedBudgetAmounts).map(Number)
+
+    // If the keys are different, there are changes
+    if (currentKeys.length !== savedKeys.length) {
+      return true
+    }
+
+    // Check if any values have changed
+    return currentKeys.some(
+      (key) => (budgetAmounts[key] || 0) !== (savedBudgetAmounts[key] || 0)
+    )
+  }, [budgetAmounts, savedBudgetAmounts])
 
   // Handle amount input change
   const handleAmountChange = (categoryId: number, value: string) => {
@@ -180,8 +201,12 @@ const BudgetSetupPage: React.FC = () => {
 
       const result = await response.json()
       message.success(
-        `Successfully saved ${result.count} budget(s) for ${getMonthName(selectedMonth)} ${selectedYear}`
+        `Successfully saved ${result.count} budget(s) for ${getMonthName(selectedMonth)} ${selectedYear}. Switch to the Budget page to see the updated budgets.`
       )
+      // Update saved state to match current amounts
+      setSavedBudgetAmounts(budgetAmounts)
+      // Refresh budgets to reflect changes immediately
+      await fetchBudgets()
     } catch (error) {
       console.error('Error saving budget:', error)
       message.error(
@@ -322,7 +347,7 @@ const BudgetSetupPage: React.FC = () => {
               icon={<SaveOutlined />}
               onClick={handleSave}
               loading={saving}
-              disabled={totalPlanned === 0}
+              disabled={totalPlanned === 0 || !hasUnsavedChanges}
             >
               Save Budget
             </Button>

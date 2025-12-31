@@ -18,6 +18,8 @@ import {
   composeBudgetPageResponse
 } from '../services/budget-calculator.service';
 import { BudgetPageResponseDTO } from '../types/budget.types';
+import { BudgetSetupRequest, BudgetSetupResponse } from '../types/budget-setup.types';
+import { saveBudgets } from '../db/budgets-dal';
 
 export const budgetsRouter = Router();
 
@@ -153,6 +155,134 @@ budgetsRouter.get('/budgets', async (req: Request, res: Response, next: NextFunc
 
     res.status(200).json(response);
   } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/budgets/setup
+ *
+ * Creates or updates budgets for a specific month/year
+ *
+ * Request Body:
+ * - user_id: string (required) - User ID
+ * - month: number (required) - Month (1-12)
+ * - year: number (required) - Year (YYYY)
+ * - budgets: BudgetSetupItem[] (required) - Array of budget items
+ *   - category_id: number
+ *   - category_name: string
+ *   - planned_amount: number
+ *
+ * Response:
+ * - 201: BudgetSetupResponse
+ *   - success: true
+ *   - count: Number of budgets created/updated
+ *   - month: Budget month
+ *   - year: Budget year
+ * - 400: Invalid request body or validation error
+ * - 500: Server error
+ *
+ * Example:
+ *   POST /api/budgets/setup
+ *   Body: {
+ *     "user_id": "user-123",
+ *     "month": 1,
+ *     "year": 2025,
+ *     "budgets": [
+ *       { "category_id": 1, "category_name": "Groceries", "planned_amount": 300 },
+ *       { "category_id": 2, "category_name": "Dining Out", "planned_amount": 150 }
+ *     ]
+ *   }
+ *   Response: {
+ *     "success": true,
+ *     "count": 2,
+ *     "month": 1,
+ *     "year": 2025
+ *   }
+ */
+budgetsRouter.post('/budgets/setup', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const requestBody = req.body as BudgetSetupRequest;
+
+    // Validate required fields
+    if (!requestBody.user_id || requestBody.month === undefined || requestBody.year === undefined) {
+      return res.status(400).json({
+        error: 'Missing required fields: user_id, month, year'
+      });
+    }
+
+    if (!Array.isArray(requestBody.budgets)) {
+      return res.status(400).json({
+        error: 'Budgets must be an array'
+      });
+    }
+
+    // Validate month range (1-12)
+    if (requestBody.month < 1 || requestBody.month > 12) {
+      return res.status(400).json({
+        error: `Invalid month: ${requestBody.month}. Must be between 1 and 12.`
+      });
+    }
+
+    // Validate year is reasonable (1970-2100)
+    if (requestBody.year < 1970 || requestBody.year > 2100) {
+      return res.status(400).json({
+        error: `Invalid year: ${requestBody.year}. Must be between 1970 and 2100.`
+      });
+    }
+
+    // Validate budgets array
+    if (requestBody.budgets.length === 0) {
+      return res.status(400).json({
+        error: 'At least one budget item is required'
+      });
+    }
+
+    // Validate each budget item
+    for (const item of requestBody.budgets) {
+      if (!item.category_id || !item.category_name || item.planned_amount === undefined) {
+        return res.status(400).json({
+          error: 'Each budget item must have category_id, category_name, and planned_amount'
+        });
+      }
+
+      if (typeof item.planned_amount !== 'number' || item.planned_amount < 0) {
+        return res.status(400).json({
+          error: `Invalid planned_amount: ${item.planned_amount}. Must be a non-negative number.`
+        });
+      }
+    }
+
+    // Check for duplicate category_ids
+    const categoryIds = new Set();
+    for (const item of requestBody.budgets) {
+      if (categoryIds.has(item.category_id)) {
+        return res.status(400).json({
+          error: `Duplicate category_id: ${item.category_id}. Each category can only appear once.`
+        });
+      }
+      categoryIds.add(item.category_id);
+    }
+
+    // Save budgets to database
+    const count = saveBudgets(
+      requestBody.user_id,
+      requestBody.month,
+      requestBody.year,
+      requestBody.budgets
+    );
+
+    // Return success response
+    const response: BudgetSetupResponse = {
+      success: true,
+      count,
+      month: requestBody.month,
+      year: requestBody.year
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    console.error('Error in POST /budgets/setup:', error);
     next(error);
   }
 });

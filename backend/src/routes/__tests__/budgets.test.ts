@@ -16,6 +16,7 @@ import express, { Express } from 'express';
 import { budgetsRouter } from '../budgets';
 import * as budgetCalculator from '../../services/budget-calculator.service';
 import * as spendingAggregation from '../../services/spending-aggregation.service';
+import * as budgetsDAL from '../../db/budgets-dal';
 
 describe('Budget Routes', () => {
   let app: Express;
@@ -663,6 +664,218 @@ describe('Budget Routes', () => {
           month: 1,
           year: 2025
         });
+      });
+    });
+  });
+
+  describe('POST /api/budgets/setup', () => {
+    beforeEach(() => {
+      jest.spyOn(budgetsDAL, 'saveBudgets').mockReturnValue(2);
+    });
+
+    describe('Request Body Validation', () => {
+      it('should return 400 when user_id is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Missing required fields');
+      });
+
+      it('should return 400 when month is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Missing required fields');
+      });
+
+      it('should return 400 when year is missing', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Missing required fields');
+      });
+
+      it('should return 400 when budgets is not an array', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: 'not-an-array'
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Budgets must be an array');
+      });
+
+      it('should return 400 when month is invalid (< 1)', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 0,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Invalid month');
+      });
+
+      it('should return 400 when budgets array is empty', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: []
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('At least one budget item is required');
+      });
+
+      it('should return 400 when there are duplicate category_ids', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 },
+              { category_id: 1, category_name: 'Groceries', planned_amount: 200 }
+            ]
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error).toContain('Duplicate category_id');
+      });
+    });
+
+    describe('Successful Responses', () => {
+      it('should return 201 with correct response structure', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 },
+              { category_id: 2, category_name: 'Dining Out', planned_amount: 150 }
+            ]
+          });
+
+        expect(response.status).toBe(201);
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('count');
+        expect(response.body).toHaveProperty('month', 1);
+        expect(response.body).toHaveProperty('year', 2025);
+      });
+
+      it('should call saveBudgets with correct parameters', async () => {
+        const saveBudgetsSpy = jest.spyOn(budgetsDAL, 'saveBudgets');
+
+        await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-456',
+            month: 6,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 400 },
+              { category_id: 3, category_name: 'Utilities', planned_amount: 200 }
+            ]
+          });
+
+        expect(saveBudgetsSpy).toHaveBeenCalledWith(
+          'user-456',
+          6,
+          2025,
+          expect.arrayContaining([
+            expect.objectContaining({
+              category_id: 1,
+              planned_amount: 400
+            }),
+            expect.objectContaining({
+              category_id: 3,
+              planned_amount: 200
+            })
+          ])
+        );
+      });
+
+      it('should accept valid month boundaries', async () => {
+        const response1 = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        const response2 = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 12,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 300 }
+            ]
+          });
+
+        expect(response1.status).toBe(201);
+        expect(response2.status).toBe(201);
+      });
+
+      it('should handle decimal amounts', async () => {
+        const response = await request(app)
+          .post('/api/budgets/setup')
+          .send({
+            user_id: 'user-123',
+            month: 1,
+            year: 2025,
+            budgets: [
+              { category_id: 1, category_name: 'Groceries', planned_amount: 123.45 },
+              { category_id: 2, category_name: 'Dining', planned_amount: 50.99 }
+            ]
+          });
+
+        expect(response.status).toBe(201);
+        expect(response.body.count).toBe(2);
       });
     });
   });
