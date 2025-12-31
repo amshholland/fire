@@ -28,12 +28,20 @@ export const usePlaidLinkHandler = () => {
   const exchangePublicTokenForAccessToken = useCallback(
     async (public_token: string) => {
       try {
+        // Get user_id from localStorage
+        const userInfo = localStorage.getItem(STORAGE_KEYS.GOOGLE_USER)
+        const user = userInfo ? JSON.parse(userInfo) : null
+        const user_id = user?.sub
+
         const response = await fetch('/api/set_access_token', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+            'Content-Type': 'application/json'
           },
-          body: `public_token=${public_token}`
+          body: JSON.stringify({
+            public_token,
+            user_id
+          })
         })
 
         if (!response.ok) {
@@ -61,6 +69,7 @@ export const usePlaidLinkHandler = () => {
         // Persist Plaid credentials
         localStorage.setItem(STORAGE_KEYS.PLAID_ITEM_ID, data.item_id)
         localStorage.setItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN, data.access_token)
+        console.log('✅ Plaid access token saved to localStorage and database')
       } catch (error) {
         console.error('Failed to exchange public token:', error)
         dispatch({

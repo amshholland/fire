@@ -157,7 +157,40 @@ export const useAppInitialization = () => {
           linkToken: localStorage.getItem(STORAGE_KEYS.LINK_TOKEN)
         }
       })
+      // Also try to restore Plaid access token if user is logged in
+      const userInfo = localStorage.getItem(STORAGE_KEYS.GOOGLE_USER)
+      if (userInfo) {
+        try {
+          const user = JSON.parse(userInfo)
+          const response = await fetch(`/api/restore_access_token/${user.sub}`)
+          const data = await response.json()
+          if (data.restored) {
+            console.log('✅ Plaid access token restored from database')
+            localStorage.setItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN, data.access_token)
+            dispatch({ type: 'SET_STATE', state: { isItemAccess: true } })
+          }
+        } catch (error) {
+          console.error('Failed to restore Plaid access token:', error)
+        }
+      }
       return
+    }
+
+    // Restore Plaid access token for logged-in users
+    const userInfo = localStorage.getItem(STORAGE_KEYS.GOOGLE_USER)
+    if (userInfo) {
+      try {
+        const user = JSON.parse(userInfo)
+        const response = await fetch(`/api/restore_access_token/${user.sub}`)
+        const data = await response.json()
+        if (data.restored) {
+          console.log('✅ Plaid access token restored from database')
+          localStorage.setItem(STORAGE_KEYS.PLAID_ACCESS_TOKEN, data.access_token)
+          dispatch({ type: 'SET_STATE', state: { isItemAccess: true } })
+        }
+      } catch (error) {
+        console.error('Failed to restore Plaid access token:', error)
+      }
     }
 
     // Generate tokens based on product configuration
