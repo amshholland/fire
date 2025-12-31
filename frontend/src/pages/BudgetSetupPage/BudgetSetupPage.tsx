@@ -26,7 +26,7 @@ import {
   Space,
   Empty
 } from 'antd'
-import { SaveOutlined, DollarOutlined } from '@ant-design/icons'
+import { SaveOutlined } from '@ant-design/icons'
 import {
   BudgetSetupRequest,
   BudgetSetupItem
@@ -97,15 +97,23 @@ const BudgetSetupPage: React.FC = () => {
   const fetchBudgets = async () => {
     try {
       const response = await fetch(
-        `/api/budgets?user_id=${userId}&month=${selectedMonth}&year=${selectedYear}`
+        `/api/budgets?userId=${userId}&month=${selectedMonth}&year=${selectedYear}`
       )
 
       if (!response.ok) {
-        throw new Error('Failed to fetch budgets')
+        const errorData = await response.json().catch(() => ({}))
+        console.error(
+          '❌ Budgets API error - Status:',
+          response.status,
+          'Error:',
+          errorData
+        )
+        throw new Error(`Failed to fetch budgets: ${response.status}`)
       }
 
       const data = await response.json()
       const categoryBudgets = data.categoryBudgets || []
+      console.log('📥 Fetched budgets from backend:', categoryBudgets)
 
       // Pre-populate budgetAmounts from fetched budgets
       const amounts: Record<number, number> = {}
@@ -114,6 +122,7 @@ const BudgetSetupPage: React.FC = () => {
           amounts[budget.category_id] = budget.budgeted_amount
         }
       )
+      console.log('💾 Setting budgetAmounts to:', amounts)
       setBudgetAmounts(amounts)
       setSavedBudgetAmounts(amounts)
     } catch (error) {
@@ -301,11 +310,16 @@ const BudgetSetupPage: React.FC = () => {
                 </Col>
                 <Col span={12}>
                   <Input
-                    prefix={<DollarOutlined />}
+                    prefix="$"
                     type="number"
                     min={0}
                     step={0.01}
-                    placeholder="0.00"
+                    placeholder={
+                      category.id in savedBudgetAmounts &&
+                      savedBudgetAmounts[category.id]! > 0
+                        ? `${savedBudgetAmounts[category.id]!.toFixed(2)}`
+                        : '0.00'
+                    }
                     value={budgetAmounts[category.id] ?? ''}
                     onChange={(e) =>
                       handleAmountChange(category.id, e.target.value)
