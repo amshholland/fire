@@ -306,7 +306,7 @@ describe('BudgetSetupPage', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/budgets?user_id=user-123')
+          expect.stringContaining('/api/budgets?userId=user-123')
         )
       })
     })

@@ -320,7 +320,11 @@ const BudgetSetupPage: React.FC = () => {
                         ? `${savedBudgetAmounts[category.id]!.toFixed(2)}`
                         : '0.00'
                     }
-                    value={budgetAmounts[category.id] ?? ''}
+                    value={
+                      budgetAmounts[category.id] !== undefined
+                        ? budgetAmounts[category.id]!.toFixed(2)
+                        : ''
+                    }
                     onChange={(e) =>
                       handleAmountChange(category.id, e.target.value)
                     }
