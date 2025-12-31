@@ -20,6 +20,24 @@
   margin: 24px 0;
 }
 
+.month-navigation-section {
+  margin: 24px 0;
+}
+
+.month-navigation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+}
+
+.month-display {
+  min-width: 120px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+}
+
 .budget-setup-categories {
   margin: 24px 0;
 }

@@ -17,7 +17,6 @@ import {
   Card,
   Input,
   Button,
-  Select,
   Spin,
   message,
   Typography,
@@ -33,10 +32,11 @@ import {
   BudgetSetupItem
 } from '../../types/budget-setup.types'
 import { useUserAuth } from '../../hooks/useUserAuth'
+import { getMonthName } from '../../utils/dateUtils'
+import MonthNavigation from '../../components/MonthNavigation/MonthNavigation'
 import './BudgetSetupPage.css'
 
 const { Title, Text } = Typography
-const { Option } = Select
 
 interface Category {
   id: number
@@ -192,30 +192,22 @@ const BudgetSetupPage: React.FC = () => {
     }
   }
 
-  // Generate month options
-  const monthOptions = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December'
-  ]
+  const handlePreviousMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12)
+      setSelectedYear(selectedYear - 1)
+    } else {
+      setSelectedMonth(selectedMonth - 1)
+    }
+  }
 
-  // Generate year options (current year and next 2 years)
-  const yearOptions = Array.from(
-    { length: 3 },
-    (_, i) => new Date().getFullYear() + i
-  )
-
-  const getMonthName = (month: number): string => {
-    return monthOptions[month - 1] || ''
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1)
+      setSelectedYear(selectedYear + 1)
+    } else {
+      setSelectedMonth(selectedMonth + 1)
+    }
   }
 
   if (loading) {
@@ -249,39 +241,15 @@ const BudgetSetupPage: React.FC = () => {
 
         <Divider />
 
-        {/* Month and Year Selector */}
-        <Row gutter={16} className="budget-setup-selectors">
-          <Col span={12}>
-            <Text strong>Month</Text>
-            <Select
-              value={selectedMonth}
-              onChange={setSelectedMonth}
-              style={{ width: '100%', marginTop: 8 }}
-              size="large"
-            >
-              {monthOptions.map((month, index) => (
-                <Option key={index + 1} value={index + 1}>
-                  {month}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-          <Col span={12}>
-            <Text strong>Year</Text>
-            <Select
-              value={selectedYear}
-              onChange={setSelectedYear}
-              style={{ width: '100%', marginTop: 8 }}
-              size="large"
-            >
-              {yearOptions.map((year) => (
-                <Option key={year} value={year}>
-                  {year}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-        </Row>
+        {/* Month and Year Navigation */}
+        <div className="month-navigation-section">
+          <MonthNavigation
+            month={selectedMonth}
+            year={selectedYear}
+            onPreviousMonth={handlePreviousMonth}
+            onNextMonth={handleNextMonth}
+          />
+        </div>
 
         <Divider />
 

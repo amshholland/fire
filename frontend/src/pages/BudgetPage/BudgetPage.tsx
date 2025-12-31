@@ -5,17 +5,18 @@ import {
   Spin,
   Empty,
   message,
-  Button,
   Progress,
   Statistic,
   Table,
-  Alert
+  Alert,
+  Tag
 } from 'antd'
-import { LeftOutlined, RightOutlined, LoadingOutlined } from '@ant-design/icons'
+import { LoadingOutlined } from '@ant-design/icons'
 import './BudgetPage.css'
 import { ColumnsType } from 'antd/es/table/InternalTable.js'
 import { useState, useEffect, useCallback } from 'react'
-import { mockBudgetData } from './__mocks__/budgetPageMockData.ts'
+import { useUserAuth } from '../../hooks/useUserAuth'
+import MonthNavigation from '../../components/MonthNavigation/MonthNavigation'
 
 interface CategoryBudget {
   category_id: number
@@ -45,28 +46,21 @@ interface BudgetPageProps {
 }
 
 const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
-  // Set to true to use mock data for development
-  const USE_MOCK_DATA = true
+  const { user } = useUserAuth()
+  const userId = user?.sub || ''
 
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1)
   const [year, setYear] = useState<number>(new Date().getFullYear())
-  const [data, setData] = useState<BudgetPageResponse | null>(
-    USE_MOCK_DATA ? mockBudgetData : null
-  )
-  const [loading, setLoading] = useState<boolean>(false)
+  const [data, setData] = useState<BudgetPageResponse | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Get userId from context or localStorage
-  // For now, using a placeholder - in production, get from auth context
-  const userId = 'user-demo'
 
   /**
    * Fetch budget page data from API
    */
   const fetchBudgetData = useCallback(
     async (selectedMonth: number, selectedYear: number) => {
-      // Skip API call if using mock data
-      if (USE_MOCK_DATA) {
+      if (!userId) {
         return
       }
 
@@ -93,14 +87,12 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
         const errorMessage =
           err instanceof Error ? err.message : 'Unknown error'
         setError(errorMessage)
-        if (message && message.error) {
-          message.error(`Failed to load budget: ${errorMessage}`)
-        }
+        message.error(`Failed to load budget: ${errorMessage}`)
       } finally {
         setLoading(false)
       }
     },
-    [userId, USE_MOCK_DATA]
+    [userId]
   )
 
   /**
@@ -145,27 +137,6 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
   }
 
   /**
-   * Get month name from number
-   */
-  const getMonthName = (m: number): string => {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ]
-    return months[m - 1] ?? ''
-  }
-
-  /**
    * Determine progress status based on percentage used
    */
   const getProgressStatus = (
@@ -192,7 +163,17 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
       dataIndex: 'category_name',
       key: 'category_name',
       width: '20%',
-      render: (text: string) => <strong>{text}</strong>
+      render: (text: string, record: CategoryBudget) => (
+        <div>
+          <strong>{text}</strong>
+          {record.budgeted_amount === 0 && (
+            <>
+              {' '}
+              <Tag color="red">No Budget</Tag>
+            </>
+          )}
+        </div>
+      )
     },
     {
       title: 'Budgeted',
@@ -200,7 +181,12 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
       key: 'budgeted_amount',
       width: '15%',
       align: 'right',
-      render: (amount: number) => formatCurrency(amount)
+      render: (amount: number) =>
+        amount === 0 ? (
+          <span style={{ color: '#d4380d' }}>—</span>
+        ) : (
+          formatCurrency(amount)
+        )
     },
     {
       title: 'Spent',
@@ -220,8 +206,17 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
       key: 'remaining_amount',
       width: '15%',
       align: 'right',
-      render: (amount: number) => (
-        <span style={{ color: amount >= 0 ? '#52c41a' : '#d4380d' }}>
+      render: (amount: number, record: CategoryBudget) => (
+        <span
+          style={{
+            color:
+              record.budgeted_amount === 0
+                ? '#d4380d'
+                : amount >= 0
+                  ? '#52c41a'
+                  : '#d4380d'
+          }}
+        >
           {formatCurrency(amount)}
         </span>
       )
@@ -231,12 +226,16 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
       dataIndex: 'percentage_used',
       key: 'percentage_used',
       width: '35%',
-      render: (percentageUsed: number) => (
+      render: (percentageUsed: number, record: CategoryBudget) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Progress
             type="line"
             percent={Math.min(percentageUsed, 100)}
-            status={getProgressStatus(percentageUsed)}
+            status={
+              record.budgeted_amount === 0
+                ? 'exception'
+                : getProgressStatus(percentageUsed)
+            }
             style={{ flex: 1, marginBottom: 0 }}
           />
           <span style={{ minWidth: '50px', textAlign: 'right' }}>
@@ -253,23 +252,12 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
         title={
           <div className="budget-header">
             <h2>Budget</h2>
-            <div className="month-navigation">
-              <Button
-                type="text"
-                icon={<LeftOutlined />}
-                onClick={handlePreviousMonth}
-                aria-label="Previous month"
-              />
-              <span className="month-display">
-                {getMonthName(month)} {year}
-              </span>
-              <Button
-                type="text"
-                icon={<RightOutlined />}
-                onClick={handleNextMonth}
-                aria-label="Next month"
-              />
-            </div>
+            <MonthNavigation
+              month={month}
+              year={year}
+              onPreviousMonth={handlePreviousMonth}
+              onNextMonth={handleNextMonth}
+            />
           </div>
         }
         style={{ marginBottom: '24px' }}

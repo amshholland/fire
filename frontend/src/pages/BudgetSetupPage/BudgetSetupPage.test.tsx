@@ -84,23 +84,43 @@ describe('BudgetSetupPage', () => {
       })
     })
 
-    it('should render month selector', async () => {
+    it('should render month and year navigation', async () => {
       await act(async () => {
         render(<BudgetSetupPage />)
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Month')).toBeInTheDocument()
+        const currentMonth = new Date().getMonth() + 1
+        const currentYear = new Date().getFullYear()
+        const monthNames = [
+          'January',
+          'February',
+          'March',
+          'April',
+          'May',
+          'June',
+          'July',
+          'August',
+          'September',
+          'October',
+          'November',
+          'December'
+        ]
+        const monthName = monthNames[currentMonth - 1]
+        expect(
+          screen.getByText(`${monthName} ${currentYear}`)
+        ).toBeInTheDocument()
       })
     })
 
-    it('should render year selector', async () => {
+    it('should render month navigation buttons', async () => {
       await act(async () => {
         render(<BudgetSetupPage />)
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Year')).toBeInTheDocument()
+        expect(screen.getByLabelText('Previous month')).toBeInTheDocument()
+        expect(screen.getByLabelText('Next month')).toBeInTheDocument()
       })
     })
 

@@ -1,0 +1,24 @@
+.month-navigation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+}
+
+.month-display {
+  min-width: 120px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .month-navigation {
+    width: 100%;
+  }
+
+  .month-display {
+    font-size: 14px;
+  }
+}
