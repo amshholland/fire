@@ -65,7 +65,7 @@ export function buildCategoryBudgetItems(
   }>,
   spending: Map<number, CategorySpendingResult>
 ): CategoryBudgetItemDTO[] {
-  return budgets.map((budget) => {
+  const items = budgets.map((budget) => {
     const spendingData = spending.get(budget.category_id);
     const spentAmount = spendingData?.total_spent ?? 0;
 
@@ -88,6 +88,14 @@ export function buildCategoryBudgetItems(
       percentage_used: percentageUsed
     };
   });
+  
+  console.log('✨ Budget items calculated:', items.map(item => ({
+    category: item.category_name,
+    remaining: item.remaining_amount,
+    percentage: item.percentage_used.toFixed(1) + '%'
+  })));
+  
+  return items;
 }
 
 /**

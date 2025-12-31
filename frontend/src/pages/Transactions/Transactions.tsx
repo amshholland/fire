@@ -178,6 +178,7 @@ const Transactions: React.FC = () => {
         <CategorySelector
           currentCategoryId={record.app_category_id}
           currentCategoryName={record.app_category_name}
+          plaidPrimaryCategory={record.plaid_category_primary}
           transactionId={record.transaction_id}
           userId={userId}
           onCategoryChange={(newCategoryId, newCategoryName) =>

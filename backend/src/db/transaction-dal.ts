@@ -7,6 +7,7 @@
 
 import { db } from './database';
 import { TransactionItemDTO, TransactionPageQueryParams, TransactionPageResponseDTO } from '../types/transaction.types';
+import { mapPlaidToAppCategory } from '../services/plaid-category-mapping.service';
 
 /**
  * Fetch transactions with category and account information
@@ -103,8 +104,31 @@ export function queryTransactions(
     offset
   ) as TransactionItemDTO[];
 
+  // Auto-populate categories from Plaid if not explicitly set
+  const processedTransactions = transactions.map((txn) => {
+    // If transaction doesn't have an explicit category, try to map from Plaid
+    if (!txn.app_category_id && txn.plaid_category_primary) {
+      const suggestedCategoryId = mapPlaidToAppCategory(txn.plaid_category_primary);
+      if (suggestedCategoryId) {
+        console.log(
+          `📱 Auto-categorized transaction "${txn.merchant_name}" from Plaid: ${txn.plaid_category_primary} → category_id: ${suggestedCategoryId}`
+        );
+        return {
+          ...txn,
+          app_category_id: suggestedCategoryId,
+          app_category_name: txn.plaid_category_primary // Will be replaced with actual name below
+        };
+      } else {
+        console.log(
+          `⚠️ Transaction "${txn.merchant_name}" needs categorization (Plaid: ${txn.plaid_category_primary})`
+        );
+      }
+    }
+    return txn;
+  });
+
   return {
-    transactions,
+    transactions: processedTransactions,
     total_count,
     page: validatedPage,
     page_size: validatedPageSize
@@ -147,6 +171,9 @@ export function queryRecentTransactions(
   `;
 
   return db.prepare(query).all(userId, validatedLimit) as TransactionItemDTO[];
+
+  // Note: Auto-categorization for recent transactions is handled by queryTransactions
+  // This function is simple read-only and doesn't apply Plaid mapping
 }
 
 /**

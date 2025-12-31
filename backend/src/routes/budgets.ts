@@ -135,6 +135,12 @@ budgetsRouter.get('/budgets', async (req: Request, res: Response, next: NextFunc
       month: parsedMonth,
       year: parsedYear
     });
+    
+    console.log(`📊 Aggregated spending for user ${userIdStr} (${parsedMonth}/${parsedYear}):`, 
+      spendingResponse.spending_by_category.length > 0 
+        ? spendingResponse.spending_by_category 
+        : 'No transactions found'
+    );
 
     // Step 3: Convert spending array to Map for efficient category lookup
     // Key: category_id, Value: { category_id, total_spent, transaction_count }
@@ -145,6 +151,16 @@ budgetsRouter.get('/budgets', async (req: Request, res: Response, next: NextFunc
     // Step 4: Build category budget items combining budgets and spending
     // For categories with no transactions, defaults spent_amount to 0
     const categoryItems = buildCategoryBudgetItems(budgets, spendingMap);
+    
+    console.log(`💰 Calculated budget remaining for ${categoryItems.length} categories:`, 
+      categoryItems.map(item => ({
+        category: item.category_name,
+        budgeted: item.budgeted_amount,
+        spent: item.spent_amount,
+        remaining: item.remaining_amount,
+        percentage_used: item.percentage_used.toFixed(1) + '%'
+      }))
+    );
 
     // Step 5: Compose final response DTO with month, year, categories, and summary
     const response: BudgetPageResponseDTO = composeBudgetPageResponse(
