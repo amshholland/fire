@@ -5,8 +5,140 @@ import { prettyPrint } from '../utils/logger';
 import { queryTransactions, queryRecentTransactions, updateTransactionCategory, getValidCategoryIds } from '../db/transaction-dal';
 import { TransactionPageQueryParams } from '../types/transaction.types';
 import { validateCategoryUpdate } from '../services/transaction-category.service';
+import { state } from '../state/store';
+import { db } from '../db/database';
 
 export const transactionsRouter = Router();
+
+/**
+ * Sync accounts from Plaid for a user
+ * 
+ * @param userId - User ID to sync accounts for
+ */
+export async function syncAccountsForUser(userId: string): Promise<void> {
+  const accessToken = state.ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('Plaid access token not found. User must connect Plaid.');
+  }
+
+  const response = await plaidClient.accountsGet({ access_token: accessToken });
+  const accounts = response.data.accounts;
+
+  // Upsert accounts into the database
+  const insertStmt = db.prepare(`
+    INSERT OR REPLACE INTO accounts (
+      id, user_id, plaid_account_id, name, type, subtype, balance, currency, created_at
+    ) VALUES (
+      @id, @user_id, @plaid_account_id, @name, @type, @subtype, @balance, @currency, COALESCE(@created_at, CURRENT_TIMESTAMP)
+    )
+  `);
+
+  for (const account of accounts) {
+    insertStmt.run({
+      id: account.account_id,
+      user_id: userId,
+      plaid_account_id: account.account_id,
+      name: account.name,
+      type: account.type,
+      subtype: account.subtype,
+      balance: account.balances.current,
+      currency: account.balances.iso_currency_code || 'USD',
+      created_at: null // Let DB default
+    });
+  }
+
+  console.log(`✅ Synced ${accounts.length} accounts for user: ${userId}`);
+}
+
+/**
+ * Sync transactions from Plaid for a user
+ * 
+ * @param userId - User ID to sync transactions for
+ */
+export async function syncTransactionsForUser(userId: string): Promise<void> {
+  const accessToken = state.ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('Plaid access token not found. User must connect Plaid.');
+  }
+
+  // Sync accounts first to ensure FK constraints are satisfied
+  await syncAccountsForUser(userId);
+
+  let cursor: string | null = null;
+  let added: any[] = [];
+  let hasMore = true;
+
+  // Fetch all new transactions from Plaid
+  while (hasMore) {
+    const response = await plaidClient.transactionsSync({ 
+      access_token: accessToken, 
+      cursor: cursor || undefined 
+    });
+    const data = response.data;
+    cursor = data.next_cursor;
+    added = added.concat(data.added);
+    hasMore = data.has_more;
+  }
+
+  // Upsert transactions into the database
+  const insertStmt = db.prepare(`
+    INSERT OR REPLACE INTO transactions (
+      id, user_id, account_id, category_id, plaid_transaction_id, name, amount, date, pending, plaid_category, plaid_primary_category, merchant_name, created_at, updated_at
+    ) VALUES (
+      @id, @user_id, @account_id, @category_id, @plaid_transaction_id, @name, @amount, @date, @pending, @plaid_category, @plaid_primary_category, @merchant_name, COALESCE(@created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
+    )
+  `);
+
+  for (const txn of added) {
+    insertStmt.run({
+      id: txn.transaction_id,
+      user_id: userId,
+      account_id: txn.account_id || null,
+      category_id: null, // App category is assigned later or via auto-categorization
+      plaid_transaction_id: txn.transaction_id,
+      name: txn.name,
+      amount: txn.amount,
+      date: txn.date,
+      pending: txn.pending ? 1 : 0,
+      plaid_category: Array.isArray(txn.category) ? txn.category.join(', ') : null,
+      plaid_primary_category: Array.isArray(txn.category) && txn.category.length > 0 ? txn.category[0] : null,
+      merchant_name: txn.merchant_name || null,
+      created_at: null // Let DB default
+    });
+  }
+
+  console.log(`✅ Synced ${added.length} transactions for user: ${userId}`);
+}
+/**
+ * POST /api/transactions/sync
+ *
+ * Fetches latest transactions from Plaid, saves them to the database, and returns the synced transactions.
+ * Requires user to be authenticated and Plaid access token to be present in memory.
+ *
+ * Request body:
+ *   - userId: string (required)
+ *
+ * Response:
+ *   - 200: { transactions: TransactionItemDTO[] }
+ *   - 400: { error: string }
+ *   - 500: { error: string }
+ */
+transactionsRouter.post('/transactions/sync', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId } = req.body;
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'Missing required field: userId' });
+    }
+
+    await syncTransactionsForUser(userId);
+
+    // Return the latest transactions from the DB for this user
+    const recentTransactions = queryRecentTransactions(userId, 30);
+    res.status(200).json({ transactions: recentTransactions });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * GET /api/transactions (Plaid Sync)

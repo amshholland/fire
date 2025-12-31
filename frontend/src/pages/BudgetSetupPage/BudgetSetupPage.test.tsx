@@ -84,10 +84,14 @@ describe('BudgetSetupPage', () => {
     ;(useUserAuthModule.useUserAuth as jest.Mock).mockReturnValue({
       user: { sub: 'user-123', name: 'Test User' }
     })
-    ;(global.fetch as jest.Mock)
+    ;;(global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
         json: async () => mockCategories
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ categories: [], count: 0 })
       })
       .mockResolvedValueOnce({
         ok: true,

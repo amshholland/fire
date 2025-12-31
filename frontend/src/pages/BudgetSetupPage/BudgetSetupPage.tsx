@@ -23,8 +23,7 @@ import {
   Row,
   Col,
   Divider,
-  Space,
-  Empty
+  Space
 } from 'antd'
 import { SaveOutlined } from '@ant-design/icons'
 import {
@@ -61,6 +60,9 @@ const BudgetSetupPage: React.FC = () => {
   )
   const [loading, setLoading] = useState<boolean>(true)
   const [saving, setSaving] = useState<boolean>(false)
+  const [newCategoryName, setNewCategoryName] = useState<string>('')
+  const [newCategoryAmount, setNewCategoryAmount] = useState<string>('')
+  const [addingCategory, setAddingCategory] = useState<boolean>(false)
 
   // Fetch categories and budgets on mount and when month/year changes
   useEffect(() => {
@@ -80,6 +82,7 @@ const BudgetSetupPage: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
+      // First fetch all available categories
       const response = await fetch(`/api/categories?user_id=${userId}`)
 
       if (!response.ok) {
@@ -87,7 +90,42 @@ const BudgetSetupPage: React.FC = () => {
       }
 
       const data = await response.json()
-      setCategories(data.categories || [])
+      let allCategories = data.categories || []
+
+      // Try to get Plaid categories from transactions to prioritize in display
+      try {
+        const plaidResponse = await fetch(
+          `/api/categories/plaid?user_id=${userId}`
+        )
+        if (plaidResponse.ok) {
+          const plaidData = await plaidResponse.json()
+          const plaidCategories = plaidData.categories || []
+          console.log(
+            '📊 Fetched Plaid categories from transactions:',
+            plaidCategories
+          )
+
+          // Filter categories to show only those with Plaid transactions
+          // This way, budget setup is focused on actual spending
+          if (plaidCategories.length > 0) {
+            const plaidCategoryNames = new Set(plaidCategories)
+            allCategories = allCategories.filter((cat: Category) =>
+              plaidCategoryNames.has(cat.name)
+            )
+            console.log(
+              '📋 Filtered categories to Plaid spending:',
+              allCategories
+            )
+          }
+        }
+      } catch (error) {
+        console.log(
+          'ℹ️ No Plaid categories found yet, showing all available categories'
+        )
+        // If Plaid categories aren't available yet, just show all categories
+      }
+
+      setCategories(allCategories)
     } catch (error) {
       console.error('Error fetching categories:', error)
       message.error('Failed to load categories')
@@ -252,19 +290,61 @@ const BudgetSetupPage: React.FC = () => {
     )
   }
 
-  if (categories.length === 0) {
-    return (
-      <div className="budget-setup-empty">
-        <Card className="budget-setup-card">
-          <Empty
-            description="No categories available"
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        </Card>
-      </div>
-    )
-  }
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      message.error('Please enter a category name')
+      return
+    }
 
+    if (!newCategoryAmount || parseFloat(newCategoryAmount) <= 0) {
+      message.error('Please enter a valid amount')
+      return
+    }
+
+    try {
+      setAddingCategory(true)
+
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          name: newCategoryName,
+          description: null
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create category')
+      }
+
+      const result = await response.json()
+      message.success('Category created successfully')
+
+      // Add the new category to the list
+      setCategories((prev) => [...prev, result.category])
+
+      // Set the budget amount for the new category
+      setBudgetAmounts((prev) => ({
+        ...prev,
+        [result.category.id]: parseFloat(newCategoryAmount)
+      }))
+
+      // Clear inputs
+      setNewCategoryName('')
+      setNewCategoryAmount('')
+    } catch (error) {
+      console.error('Error creating category:', error)
+      message.error(
+        error instanceof Error ? error.message : 'Failed to create category'
+      )
+    } finally {
+      setAddingCategory(false)
+    }
+  }
   return (
     <div className="budget-setup-page">
       <Card className="budget-setup-card">
@@ -290,50 +370,92 @@ const BudgetSetupPage: React.FC = () => {
         {/* Category List with Amount Inputs */}
         <div className="budget-setup-categories">
           <Title level={4}>Category Budgets</Title>
+          {categories.length === 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary">
+                No categories found. Create your first category below:
+              </Text>
+            </div>
+          )}
           <div className="category-list">
-            {categories.map((category) => (
-              <Row
-                key={category.id}
-                className="category-row"
-                gutter={16}
-                align="middle"
-              >
-                <Col span={12}>
-                  <Text strong>{category.name}</Text>
-                  {category.description && (
-                    <div>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {category.description}
-                      </Text>
-                    </div>
-                  )}
+            {categories.length === 0 ? (
+              <Row className="category-row" gutter={16} align="middle">
+                <Col span={10}>
+                  <Input
+                    placeholder="Enter category name"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    size="large"
+                  />
                 </Col>
-                <Col span={12}>
+                <Col span={10}>
                   <Input
                     prefix="$"
                     type="number"
                     min={0}
                     step={0.01}
-                    placeholder={
-                      category.id in savedBudgetAmounts &&
-                      savedBudgetAmounts[category.id]! > 0
-                        ? `${savedBudgetAmounts[category.id]!.toFixed(2)}`
-                        : '0.00'
-                    }
-                    value={
-                      budgetAmounts[category.id] !== undefined
-                        ? budgetAmounts[category.id]!.toFixed(2)
-                        : ''
-                    }
-                    onChange={(e) =>
-                      handleAmountChange(category.id, e.target.value)
-                    }
+                    placeholder="0.00"
+                    value={newCategoryAmount}
+                    onChange={(e) => setNewCategoryAmount(e.target.value)}
                     size="large"
-                    className="amount-input"
                   />
                 </Col>
+                <Col span={4}>
+                  <Button
+                    type="primary"
+                    onClick={handleAddCategory}
+                    loading={addingCategory}
+                    size="large"
+                  >
+                    Add
+                  </Button>
+                </Col>
               </Row>
-            ))}
+            ) : (
+              categories.map((category) => (
+                <Row
+                  key={category.id}
+                  className="category-row"
+                  gutter={16}
+                  align="middle"
+                >
+                  <Col span={12}>
+                    <Text strong>{category.name}</Text>
+                    {category.description && (
+                      <div>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          {category.description}
+                        </Text>
+                      </div>
+                    )}
+                  </Col>
+                  <Col span={12}>
+                    <Input
+                      prefix="$"
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      placeholder={
+                        category.id in savedBudgetAmounts &&
+                        savedBudgetAmounts[category.id]! > 0
+                          ? `${savedBudgetAmounts[category.id]!.toFixed(2)}`
+                          : '0.00'
+                      }
+                      value={
+                        budgetAmounts[category.id] !== undefined
+                          ? budgetAmounts[category.id]!.toFixed(2)
+                          : ''
+                      }
+                      onChange={(e) =>
+                        handleAmountChange(category.id, e.target.value)
+                      }
+                      size="large"
+                      className="amount-input"
+                    />
+                  </Col>
+                </Row>
+              ))
+            )}
           </div>
         </div>
 
@@ -351,7 +473,7 @@ const BudgetSetupPage: React.FC = () => {
               <Title level={3} style={{ margin: 0 }}>
                 ${totalPlanned.toFixed(2)}
               </Title>
-              {totalPlanned === 0 && (
+              {totalPlanned === 0 && categories.length > 0 && (
                 <Text type="warning" style={{ fontSize: '12px', marginTop: 8 }}>
                   Enter amounts above to enable saving
                 </Text>

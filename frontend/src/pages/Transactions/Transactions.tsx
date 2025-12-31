@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Table, message, Spin, Empty, Typography } from 'antd'
+import { Table, message, Spin, Empty, Typography, Button } from 'antd'
 import type { ColumnsType } from 'antd/es/table/InternalTable.js'
 import { TransactionItem } from '../../types/transaction.types'
 import CategorySelector from '../../components/CategorySelector/CategorySelector'
 import { useUpdateTransactionCategory } from '../../hooks/useUpdateTransactionCategory'
+import { useUserAuth } from '../../hooks/useUserAuth'
 import './Transactions.css'
 
 const { Title } = Typography
@@ -68,15 +69,47 @@ const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
   const { updateCategory } = useUpdateTransactionCategory()
+  const { user } = useUserAuth()
 
-  // TODO: Replace with actual user ID from auth context
-  const userId = 'user-demo'
+  // Get authenticated user ID
+  const userId = user?.sub || 'user-demo'
+
+  /**
+   * Sync transactions from Plaid and update the list
+   */
+  const handleSyncTransactions = async () => {
+    setSyncing(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/transactions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to sync transactions')
+      }
+      const data = await response.json()
+      setTransactions(data.transactions || [])
+      message.success('Transactions synced successfully')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(errorMessage)
+      message.error(`Failed to sync transactions: ${errorMessage}`)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   /**
    * Load transactions on component mount
    */
   useEffect(() => {
+    if (!user) return
+
     const loadTransactions = async () => {
       setLoading(true)
       setError(null)
@@ -95,7 +128,7 @@ const Transactions: React.FC = () => {
     }
 
     loadTransactions()
-  }, [userId])
+  }, [userId, user])
 
   /**
    * Handle category change with optimistic update and database persistence
@@ -205,6 +238,16 @@ const Transactions: React.FC = () => {
   return (
     <div className="transactions-page">
       <Title level={2}>Recent Transactions</Title>
+      <div className="sync-transactions-bar">
+        <Button
+          type="primary"
+          loading={syncing}
+          onClick={handleSyncTransactions}
+          disabled={loading || syncing}
+        >
+          {syncing ? 'Syncing...' : 'Sync Transactions'}
+        </Button>
+      </div>
 
       {loading ? (
         <div className="loading-container">

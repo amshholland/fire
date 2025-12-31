@@ -14,6 +14,59 @@
 import { db } from '../db/database';
 
 /**
+ * Convert Plaid category name from UPPER_SNAKE_CASE to Title Case with spaces
+ * 
+ * Examples:
+ * - "FOOD_AND_DRINK" → "Food And Drink"
+ * - "TRANSPORTATION" → "Transportation"
+ * - "SHOPPING_CLOTHING" → "Shopping Clothing"
+ * 
+ * @param plaidCategory - Plaid category in UPPER_SNAKE_CASE format
+ * @returns Formatted category name in Title Case with spaces
+ */
+/**
+ * Format a Plaid or transaction category string (UPPER_SNAKE_CASE) to a user-friendly label.
+ * - Replaces all 'AND' with '&'
+ * - Main: Sub (e.g., "BILLS_AND_UTILITIES_GAS" → "Bills & Utilities: Gas")
+ * - Handles any position of 'AND'
+ *
+ * @param category - The category string (e.g., 'SHOPPING_CLOTHING', 'BILLS_AND_UTILITIES_GAS')
+ * @returns User-friendly label
+ */
+export function formatPlaidCategoryName(category: string): string {
+  if (!category) return '';
+  const parts = category.split('_').map((word) => word === 'AND' ? '&' : word);
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+  }
+  let main = '';
+  let sub = '';
+  if (parts[1] === '&') {
+    main = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase() + ' & ' +
+      parts[2].charAt(0).toUpperCase() + parts[2].slice(1).toLowerCase();
+    sub = parts.slice(3).join('_');
+  } else {
+    const andIndex = parts.indexOf('&', 1);
+    if (andIndex > 0) {
+      main = parts.slice(0, andIndex + 1).map((word) => word === '&' ? '&' : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+      if (parts[andIndex + 1]) {
+        main += ' ' + parts[andIndex + 1].charAt(0).toUpperCase() + parts[andIndex + 1].slice(1).toLowerCase();
+      }
+      sub = parts.slice(andIndex + 2).join('_');
+    } else {
+      main = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+      sub = parts.slice(1).join('_');
+    }
+  }
+  if (!sub) return main;
+  const subFormatted = sub
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  return `${main}: ${subFormatted}`;
+}
+
+/**
  * Map Plaid primary category to app category ID
  * 
  * Uses Plaid's primary category to find the best matching app category.
@@ -153,7 +206,9 @@ export function getCategoryStatus(
 
   if (plaidPrimaryCategory) {
     // No user categorization, but we have Plaid suggestion
-    return `Suggested: ${plaidPrimaryCategory}`;
+    // Format the Plaid category name for display (e.g., "Food And Drink")
+    const formattedPlaidCategory = formatPlaidCategoryName(plaidPrimaryCategory);
+    return `Suggested: ${formattedPlaidCategory}`;
   }
 
   // No categorization at all

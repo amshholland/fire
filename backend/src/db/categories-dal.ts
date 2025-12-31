@@ -2,7 +2,6 @@
  * Categories Data Access Layer
  * 
  * Handles database operations for categories.
- * Read-only operations - no category creation or editing.
  */
 
 import { db } from './database';
@@ -65,6 +64,26 @@ export function getCategoryById(categoryId: number): Category | null {
 }
 
 /**
+ * Create a new category
+ * 
+ * @param name - Category name
+ * @param description - Optional category description
+ * @returns Created category or null if failed
+ */
+export function createCategory(name: string, description?: string): Category | null {
+  try {
+    const insertStmt = db.prepare('INSERT INTO categories (name, description) VALUES (?, ?)');
+    const result = insertStmt.run(name, description || null);
+    
+    // Return the created category
+    return getCategoryById(result.lastInsertRowid as number);
+  } catch (error) {
+    console.error('Error creating category:', error);
+    return null;
+  }
+}
+
+/**
  * Check if a category exists
  * 
  * @param categoryId - Category ID
@@ -117,6 +136,36 @@ export function getCategoriesByIds(categoryIds: number[]): Category[] {
     return results;
   } catch (error) {
     console.error('Error fetching categories by IDs:', error);
+    return [];
+  }
+}
+
+/**
+ * Get distinct Plaid primary categories from user transactions
+ * Used to initialize budget setup with categories from actual spending
+ * 
+ * @param userId - User ID
+ * @returns Array of distinct Plaid primary categories
+ */
+export interface PlaidCategory {
+  plaid_primary_category: string;
+}
+
+export function getPlaidCategoriesFromTransactions(userId: string): string[] {
+  try {
+    const query = `
+      SELECT DISTINCT plaid_primary_category
+      FROM transactions
+      WHERE user_id = ?
+        AND plaid_primary_category IS NOT NULL
+        AND plaid_primary_category != ''
+      ORDER BY plaid_primary_category ASC
+    `;
+    
+    const results = db.prepare(query).all(userId) as PlaidCategory[];
+    return results.map((row) => row.plaid_primary_category);
+  } catch (error) {
+    console.error('Error fetching Plaid categories from transactions:', error);
     return [];
   }
 }

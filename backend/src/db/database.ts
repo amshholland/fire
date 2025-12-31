@@ -154,13 +154,46 @@ export function seedDatabase() {
       categoryInsert.run(cat);
     });
 
-    // Insert sample budgets for user
-    const budgetInsert = db.prepare(
-      'INSERT OR IGNORE INTO budgets (user_id, category_id, month, year, amount) VALUES (?, ?, ?, ?, ?)'
+    // Insert demo transactions for testing purposes
+    // Note: No demo budgets - users must set up budgets in the app
+    const transactionInsert = db.prepare(
+      'INSERT OR IGNORE INTO transactions (id, user_id, account_id, category_id, name, amount, date, plaid_primary_category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     const categoryByName = db.prepare('SELECT id FROM categories WHERE name = ?');
     
+    const transactions = [
+      { name: 'Whole Foods', category: 'Groceries', plaidCategory: 'FOOD_AND_DRINK', amount: -150, day: 1 },
+      { name: "Trader Joe's", category: 'Groceries', plaidCategory: 'FOOD_AND_DRINK', amount: -85, day: 5 },
+      { name: 'Olive Garden', category: 'Dining Out', plaidCategory: 'FOOD_AND_DRINK', amount: -45, day: 10 },
+      { name: 'Uber', category: 'Transportation', plaidCategory: 'TRANSPORTATION', amount: -25, day: 8 },
+      { name: 'Movie Tickets', category: 'Entertainment', plaidCategory: 'ENTERTAINMENT', amount: -30, day: 12 }
+    ];
+
+    transactions.forEach((transaction, index) => {
+      const category = categoryByName.get(transaction.category) as any;
+      if (category) {
+        const transactionId = `txn-demo-${index}`;
+        const date = `2025-01-${String(transaction.day).padStart(2, '0')}`;
+        transactionInsert.run(
+          transactionId,
+          'user-demo',
+          'account-demo',
+          category.id,
+          transaction.name,
+          transaction.amount,
+          date,
+          transaction.plaidCategory
+        );
+      }
+    });
+
+    // Insert demo budgets for testing purposes only
+    // In production, users set up budgets themselves in the budget setup flow
+    const budgetInsert = db.prepare(
+      'INSERT OR IGNORE INTO budgets (user_id, category_id, month, year, amount) VALUES (?, ?, ?, ?, ?)'
+    );
+
     const budgets = [
       { name: 'Groceries', month: 1, year: 2025, amount: 300 },
       { name: 'Dining Out', month: 1, year: 2025, amount: 200 },
@@ -176,37 +209,7 @@ export function seedDatabase() {
       }
     });
 
-    // Insert sample transactions
-    const transactionInsert = db.prepare(
-      'INSERT OR IGNORE INTO transactions (id, user_id, account_id, category_id, name, amount, date) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    );
-
-    const transactions = [
-      { name: 'Whole Foods', category: 'Groceries', amount: -150, day: 1 },
-      { name: 'Trader Joe\'s', category: 'Groceries', amount: -85, day: 5 },
-      { name: 'Olive Garden', category: 'Dining Out', amount: -45, day: 10 },
-      { name: 'Uber', category: 'Transportation', amount: -25, day: 8 },
-      { name: 'Movie Tickets', category: 'Entertainment', amount: -30, day: 12 }
-    ];
-
-    transactions.forEach((transaction, index) => {
-      const category = categoryByName.get(transaction.category) as any;
-      if (category) {
-        const transactionId = `txn-demo-${index}`;
-        const date = `2025-01-${String(transaction.day).padStart(2, '0')}`;
-        transactionInsert.run(
-          transactionId,
-          'user-demo',
-          'account-demo',
-          category.id,
-          transaction.name,
-          transaction.amount,
-          date
-        );
-      }
-    });
-
-    console.log('Database seeded with sample data');
+    console.log('Database seeded with demo transactions and budgets (test data only)');
   } catch (error) {
     console.error('Error seeding database:', error);
   }

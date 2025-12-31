@@ -262,4 +262,73 @@ describe('Categories Routes', () => {
       expect(response.body).toHaveProperty('categories');
     });
   });
+
+  describe('POST /api/categories', () => {
+    it('should create a new category with valid name', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({ name: 'Test Category' });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('category');
+      expect(response.body.category).toHaveProperty('id');
+      expect(response.body.category.name).toBe('Test Category');
+      expect(response.body.category).toHaveProperty('created_at');
+    });
+
+    it('should create a category with name and description', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({ name: 'Category with Description', description: 'Test description' });
+
+      expect(response.status).toBe(201);
+      expect(response.body.category.name).toBe('Category with Description');
+      expect(response.body.category.description).toBe('Test description');
+    });
+
+    it('should trim whitespace from category name', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({ name: '  Spaced Category  ' });
+
+      expect(response.status).toBe(201);
+      expect(response.body.category.name).toBe('Spaced Category');
+    });
+
+    it('should return 400 for missing name', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Missing or invalid required parameter: name');
+    });
+
+    it('should return 400 for empty name', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({ name: '' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Missing or invalid required parameter: name');
+    });
+
+    it('should return 400 for whitespace-only name', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({ name: '   ' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Missing or invalid required parameter: name');
+    });
+
+    it('should return 400 for invalid name type', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({ name: 123 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Missing or invalid required parameter: name');
+    });
+  });
 });

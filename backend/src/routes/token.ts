@@ -3,6 +3,7 @@ import { plaidClient } from '../clients/plaidClient';
 import { state } from '../state/store';
 import { db } from '../db/database';
 import { prettyPrint } from '../utils/logger';
+import { syncTransactionsForUser } from './transactions';
 
 export const tokenRouter = Router();
 
@@ -37,6 +38,15 @@ tokenRouter.post('/set_access_token', async (req: Request, res: Response, next: 
       `);
       updateStmt.run(state.ACCESS_TOKEN, req.body.user_id);
       console.log(`✅ Plaid access token saved for user: ${req.body.user_id}`);
+
+      // Automatically sync transactions after connecting Plaid
+      try {
+        await syncTransactionsForUser(req.body.user_id);
+        console.log(`✅ Auto-synced transactions for user: ${req.body.user_id}`);
+      } catch (syncError) {
+        console.error(`❌ Failed to auto-sync transactions for user: ${req.body.user_id}`, syncError);
+        // Don't fail the token exchange if sync fails
+      }
     }
 
     res.json({ access_token: state.ACCESS_TOKEN, item_id: state.ITEM_ID, error: null });

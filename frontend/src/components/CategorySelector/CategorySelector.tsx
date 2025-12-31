@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Select, message } from 'antd';
-import type { SelectProps } from 'antd';
+import React, { useState, useEffect } from 'react'
+import { Select, message } from 'antd'
+import type { SelectProps } from 'antd'
 
 interface Category {
-  id: number;
-  name: string;
+  id: number
+  name: string
 }
 
 interface CategorySelectorProps {
@@ -19,7 +19,7 @@ interface CategorySelectorProps {
 
 /**
  * Category Selector Component
- * 
+ *
  * Dropdown selector for updating transaction categories.
  * Shows system categories and handles optimistic UI updates.
  */
@@ -176,4 +176,4 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({
   )
 }
 
-export default CategorySelector;
+export default CategorySelector

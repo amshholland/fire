@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { config as appConfig } from './config/env';
 import { apiErrorMiddleware } from './utils/errors';
-import { initializeDatabase, seedDatabase } from './db/database';
+import { initializeDatabase } from './db/database';
 
 import { infoRouter } from './routes/info';
 import { linkRouter } from './routes/link';
@@ -26,11 +26,9 @@ import { debugRouter } from './routes/debug';
 
 const app = express();
 
-// Initialize database and seed with sample data
+// Initialize database
 initializeDatabase();
-if (process.env.NODE_ENV !== 'production') {
-  seedDatabase();
-}
+// Note: No longer seeding demo data on startup
 
 // Enable CORS for frontend on port 3000
 app.use(cors({
