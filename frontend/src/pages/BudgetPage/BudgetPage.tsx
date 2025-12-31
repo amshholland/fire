@@ -9,9 +9,11 @@ import {
   Statistic,
   Table,
   Alert,
-  Tag
+  Tag,
+  Collapse,
+  Typography
 } from 'antd'
-import { LoadingOutlined } from '@ant-design/icons'
+import { LoadingOutlined, DownOutlined } from '@ant-design/icons'
 import './BudgetPage.css'
 import { ColumnsType } from 'antd/es/table/InternalTable.js'
 import { useState, useEffect, useCallback } from 'react'
@@ -45,6 +47,15 @@ interface BudgetPageProps {
   isActive?: boolean
 }
 
+interface TransactionItem {
+  transaction_id: string
+  date: string
+  merchant_name: string
+  amount: number
+  app_category_id: number | null
+  app_category_name: string | null
+}
+
 const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
   const { user } = useUserAuth()
   const userId = user?.sub || ''
@@ -54,6 +65,7 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
   const [data, setData] = useState<BudgetPageResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [transactions, setTransactions] = useState<Record<number, TransactionItem[]>>({})
 
   /**
    * Fetch budget page data from API
@@ -83,6 +95,11 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
 
         const budgetData: BudgetPageResponse = await response.json()
         setData(budgetData)
+
+        // Fetch transactions for categories that have budgets
+        if (budgetData.categoryBudgets.length > 0) {
+          await fetchTransactionsForCategories(budgetData.categoryBudgets, selectedMonth, selectedYear)
+        }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Unknown error'
@@ -91,6 +108,47 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
       } finally {
         setLoading(false)
       }
+    },
+    [userId]
+  )
+
+  /**
+   * Fetch transactions for categories that have budgets
+   */
+  const fetchTransactionsForCategories = useCallback(
+    async (categoryBudgets: CategoryBudget[], selectedMonth: number, selectedYear: number) => {
+      const categoryTransactions: Record<number, TransactionItem[]> = {}
+
+      // Calculate date range for the month
+      const startDate = new Date(selectedYear, selectedMonth - 1, 1).toISOString().split('T')[0]
+      const endDate = new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0]
+
+      // Fetch transactions for each category that has a budget
+      for (const budget of categoryBudgets) {
+        if (budget.budgeted_amount > 0) {
+          try {
+            const params = new URLSearchParams({
+              userId,
+              category_id: String(budget.category_id),
+              start_date: startDate,
+              end_date: endDate,
+              page_size: '50' // Limit to recent transactions
+            })
+
+            const response = await fetch(`/api/transactions/db?${params}`)
+
+            if (response.ok) {
+              const data = await response.json()
+              categoryTransactions[budget.category_id] = data.transactions || []
+            }
+          } catch (error) {
+            console.error(`Failed to fetch transactions for category ${budget.category_id}:`, error)
+            // Continue with other categories even if one fails
+          }
+        }
+      }
+
+      setTransactions(categoryTransactions)
     },
     [userId]
   )
@@ -152,6 +210,18 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
    */
   const formatCurrency = (value: number): string => {
     return `$${Math.abs(value).toFixed(2)}`
+  }
+
+  /**
+   * Format transaction date
+   */
+  const formatTransactionDate = (dateStr: string): string => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
   }
 
   /**
@@ -242,6 +312,38 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
             {percentageUsed.toFixed(1)}%
           </span>
         </div>
+      )
+    }
+  ]
+
+  /**
+   * Define table columns for transactions
+   */
+  const transactionColumns: ColumnsType<TransactionItem> = [
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+      width: '20%',
+      render: (date: string) => formatTransactionDate(date)
+    },
+    {
+      title: 'Merchant',
+      dataIndex: 'merchant_name',
+      key: 'merchant_name',
+      width: '50%',
+      render: (merchant: string) => merchant || 'Unknown'
+    },
+    {
+      title: 'Amount',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: '30%',
+      align: 'right',
+      render: (amount: number) => (
+        <span style={{ color: amount < 0 ? '#d4380d' : '#52c41a' }}>
+          {formatCurrency(amount)}
+        </span>
       )
     }
   ]
@@ -343,6 +445,49 @@ const BudgetPage: React.FC<BudgetPageProps> = ({ isActive = true }) => {
           />
         ) : null}
       </Card>
+
+      {/* Transactions by Category */}
+      {data && data.categoryBudgets.length > 0 && Object.keys(transactions).length > 0 && (
+        <Card
+          title="Recent Transactions by Category"
+          style={{ marginTop: '24px' }}
+        >
+          <Collapse
+            defaultActiveKey={[]}
+            expandIcon={({ isActive }) => <DownOutlined rotate={isActive ? 180 : 0} />}
+          >
+            {data.categoryBudgets
+              .filter(budget => budget.budgeted_amount > 0 && transactions[budget.category_id]?.length > 0)
+              .map(budget => (
+                <Collapse.Panel
+                  key={budget.category_id}
+                  header={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <span>
+                        <strong>{budget.category_name}</strong>
+                        <Tag style={{ marginLeft: '8px' }}>
+                          {transactions[budget.category_id]?.length || 0} transactions
+                        </Tag>
+                      </span>
+                      <span style={{ color: '#666', fontSize: '12px' }}>
+                        Spent: {formatCurrency(budget.spent_amount)} / {formatCurrency(budget.budgeted_amount)}
+                      </span>
+                    </div>
+                  }
+                >
+                  <Table<TransactionItem>
+                    columns={transactionColumns}
+                    dataSource={transactions[budget.category_id] || []}
+                    rowKey="transaction_id"
+                    pagination={{ pageSize: 10, showSizeChanger: false }}
+                    size="small"
+                    scroll={{ x: 400 }}
+                  />
+                </Collapse.Panel>
+              ))}
+          </Collapse>
+        </Card>
+      )}
 
       {/* Help text */}
       <div style={{ color: '#666', fontSize: '12px', marginTop: '16px' }}>

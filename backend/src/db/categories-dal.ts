@@ -84,6 +84,31 @@ export function createCategory(name: string, description?: string): Category | n
 }
 
 /**
+ * Update an existing category
+ * 
+ * @param categoryId - Category ID to update
+ * @param name - New category name
+ * @param description - Optional new category description
+ * @returns Updated category or null if failed
+ */
+export function updateCategory(categoryId: number, name: string, description?: string): Category | null {
+  try {
+    const updateStmt = db.prepare('UPDATE categories SET name = ?, description = ? WHERE id = ?');
+    const result = updateStmt.run(name, description || null, categoryId);
+    
+    if (result.changes === 0) {
+      return null; // Category not found
+    }
+    
+    // Return the updated category
+    return getCategoryById(categoryId);
+  } catch (error) {
+    console.error('Error updating category:', error);
+    return null;
+  }
+}
+
+/**
  * Check if a category exists
  * 
  * @param categoryId - Category ID

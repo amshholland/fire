@@ -5,7 +5,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { getAvailableCategories, getPlaidCategoriesFromTransactions, createCategory } from '../db/categories-dal';
+import { getAvailableCategories, getPlaidCategoriesFromTransactions, createCategory, updateCategory } from '../db/categories-dal';
 
 export const categoriesRouter = Router();
 
@@ -160,6 +160,72 @@ categoriesRouter.post('/categories', (req: Request, res: Response, next: NextFun
     res.status(201).json({ category });
   } catch (error) {
     console.error('Error in POST /api/categories:', error);
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/categories/:id
+ * 
+ * Update an existing category.
+ * 
+ * URL Parameters:
+ * - id: Category ID to update
+ * 
+ * Request Body:
+ * {
+ *   "name": "Updated Category Name",
+ *   "description": "Optional updated description"
+ * }
+ * 
+ * Response Format:
+ * {
+ *   "category": {
+ *     "id": 9,
+ *     "name": "Updated Category Name",
+ *     "description": "Optional updated description",
+ *     "created_at": "2025-01-01T00:00:00.000Z"
+ *   }
+ * }
+ * 
+ * Status Codes:
+ * - 200: Updated
+ * - 400: Missing or invalid parameters
+ * - 404: Category not found
+ * - 500: Server error
+ */
+categoriesRouter.put('/categories/:id', (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    // Validate ID parameter
+    const categoryId = parseInt(id, 10);
+    if (isNaN(categoryId)) {
+      return res.status(400).json({
+        error: 'Invalid category ID'
+      });
+    }
+
+    // Validate name parameter
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({
+        error: 'Missing or invalid required parameter: name'
+      });
+    }
+
+    // Update the category
+    const category = updateCategory(categoryId, name.trim(), description);
+
+    if (!category) {
+      return res.status(404).json({
+        error: 'Category not found'
+      });
+    }
+
+    res.status(200).json({ category });
+  } catch (error) {
+    console.error('Error in PUT /api/categories/:id:', error);
     next(error);
   }
 });
